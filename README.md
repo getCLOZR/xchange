@@ -10,4 +10,6 @@ Future AI as interconnected networks of specialized autonomous agents—not isol
 
 ---
 
-*Placeholder — docs, setup, and API details coming soon.*
+## Backend & orchestration
+
+See [backend/README.md](backend/README.md) for API setup, session dispatch (`POST /sessions/dispatch`), and the demo summarizer worker on port 9001.
