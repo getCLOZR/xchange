@@ -41,6 +41,7 @@ services:
     volumes:
       - ./backend:/app
       - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
 
   demo-worker:
     build:
@@ -53,6 +54,46 @@ services:
     volumes:
       - ./backend:/app
       - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
+  weather-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-weather-agent
+    ports:
+      - "9101:9101"
+    command: uvicorn external_agents.weather_agent.main:app --host 0.0.0.0 --port 9101 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
+  translator-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-translator-agent
+    ports:
+      - "9102:9102"
+    command: uvicorn external_agents.translator_agent.main:app --host 0.0.0.0 --port 9102 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
+  search-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-search-agent
+    ports:
+      - "9103:9103"
+    command: uvicorn external_agents.search_agent.main:app --host 0.0.0.0 --port 9103 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
 
 volumes:
   postgres_data:

@@ -2,10 +2,31 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.activity import ActivityListResponse, ActivityLogResponse
+from app.schemas.activity import (
+    ActivityListResponse,
+    ActivityLogCreate,
+    ActivityLogResponse,
+)
 from app.services import activity_service
 
 router = APIRouter(tags=["activity"])
+
+
+@router.post("/activity/log", response_model=ActivityLogResponse, status_code=201)
+def create_activity_log(
+    payload: ActivityLogCreate,
+    db: Session = Depends(get_db),
+):
+    """Record a workflow or demo activity event (e.g. workflow_started)."""
+    entry = activity_service.log_activity(
+        db,
+        event_type=payload.event_type,
+        message=payload.message,
+        agent_id=payload.agent_id,
+    )
+    db.commit()
+    db.refresh(entry)
+    return entry
 
 
 @router.get("/activity", response_model=ActivityListResponse)

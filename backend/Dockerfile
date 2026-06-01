@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend /app
 COPY demo_agents /app/demo_agents
+COPY external_agents /app/external_agents
 
 EXPOSE 8000
 

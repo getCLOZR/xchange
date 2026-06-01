@@ -9,7 +9,8 @@ CLOZR Exchange is **domain-agnostic AI agent coordination infrastructure**.
 | Exchange API | Registry, health checks, routing, sessions, activity logs |
 | PostgreSQL | Persistent state |
 | Alembic | Schema migrations |
-| Demo worker | External task executor implementing [CLOZR Agent Contract v0.1](../specs/clozr-agent-contract-v0.1.md) (`/health`, `/execute`) |
+| Demo worker | In-repo reference worker ([contract v0.1](../specs/clozr-agent-contract-v0.1.md)) |
+| External agents | Independent workers under `external_agents/` (weather, translator) — contract only, no backend imports |
 | Developer dashboard | Internal observability UI |
 | Docker Compose | Optional local infrastructure stack |
 
