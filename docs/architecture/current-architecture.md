@@ -1,145 +1,73 @@
 # Current Architecture
 
-CLOZR Exchange is **domain-agnostic AI agent coordination infrastructure**. The exchange core handles registration, discovery, routing, sessions, orchestration, and logs. It does not contain vertical or domain-specific business logic—that lives in independently operated worker agents.
+CLOZR Exchange is **domain-agnostic AI agent coordination infrastructure**.
 
-## System components (today)
+## System components
 
-| Component | Role | Technology |
-|-----------|------|------------|
-| **Exchange API** | Registry, routing, session lifecycle, activity logs | Python, FastAPI, SQLAlchemy, PostgreSQL |
-| **Worker agents** | Execute tasks at their own HTTP endpoints | Any stack; demo uses FastAPI |
-| **Developer dashboard** | Internal observability and manual dispatch testing | Next.js, TypeScript, Axios |
-| **PostgreSQL** | Persistent storage for agents, capabilities, sessions, logs | Local / Homebrew / Docker |
+| Component | Role |
+|-----------|------|
+| Exchange API | Registry, health checks, routing, sessions, activity logs |
+| PostgreSQL | Persistent state |
+| Alembic | Schema migrations |
+| Demo worker | External task executor (`/health`, `/execute`) |
+| Developer dashboard | Internal observability UI |
+| Docker Compose | Optional local infrastructure stack |
 
-## Exchange core concepts
+## Configuration
 
-The exchange layer currently understands:
+All runtime settings are loaded from environment variables through `app/core/config.py`:
 
-- **Agents** — registered participants with name, endpoint URL, version, and metadata
-- **Capabilities** — named skills an agent advertises (with optional JSON schemas)
-- **Sessions** — a single orchestration run from dispatch through worker response
-- **Routing** — select an active worker that offers the requested capability
-- **Orchestration** — synchronous dispatch: create session → call worker → store result
-- **Activity logs** — append-only events for registration and session lifecycle
+- `APP_NAME`, `ENVIRONMENT`
+- `DATABASE_URL`
+- `BACKEND_HOST`, `BACKEND_PORT`
+- `WORKER_HTTP_TIMEOUT_SECONDS`
+- `CORS_ORIGINS`
+- `LOG_LEVEL`
 
-Commerce, billing, auth, queues, and reputation are **not** in the exchange core today.
+## Schema management
 
-## Architecture diagram
+Database schema is managed by Alembic migrations in `backend/alembic/versions/`.
 
-```mermaid
-flowchart TB
-  subgraph clients["Clients"]
-    RA[Requester agent]
-    DASH[Developer dashboard<br/>internal only]
-  end
+The API does **not** rely on `Base.metadata.create_all()` at startup.
 
-  subgraph exchange["CLOZR Exchange"]
-    API[FastAPI API :8000]
-    DB[(PostgreSQL)]
-    API --> DB
-  end
+## Routing engine (v0.2)
 
-  subgraph workers["Worker agents"]
-    WA[Worker agent<br/>e.g. demo summarizer :9001]
-  end
+- Service: `routing_service.py` — deterministic scoring and ranking
+- Trace: `Session.routing_trace` (JSONB)
+- Failover: synchronous retry on next ranked healthy worker
+- Preview: `GET /routing/preview?capability=...`
 
-  RA -->|POST /sessions/dispatch| API
-  DASH -->|REST read/write| API
+## API surface
 
-  API -->|POST /execute| WA
-  WA -->|JSON result| API
+| Method | Path |
+|--------|------|
+| GET | `/health` |
+| POST | `/agents/register` |
+| GET | `/agents` |
+| GET | `/agents/search` |
+| POST | `/agents/health-check` |
+| POST | `/agents/{id}/health-check` |
+| GET | `/routing/preview` |
+| GET | `/activity` |
+| POST | `/sessions/dispatch` |
+| GET | `/sessions` |
+| GET | `/sessions/{id}` |
 
-  API -->|ActivityLog events| DB
-  API -->|Session record| DB
-```
+## Local infrastructure (Docker)
 
-## Data model (current)
+`docker-compose.yml` provides:
 
-```mermaid
-erDiagram
-  Agent ||--o{ Capability : has
-  Agent ||--o{ Session : requester
-  Agent ||--o{ Session : worker
-  Agent ||--o{ ActivityLog : optional
+1. `postgres`
+2. `backend` (migrations + API)
+3. `demo-worker`
 
-  Agent {
-    int id
-    string name
-    string endpoint_url
-    bool is_active
-  }
+## Testing
 
-  Capability {
-    int id
-    int agent_id
-    string name
-    jsonb input_schema
-    jsonb output_schema
-  }
-
-  Session {
-    int id
-    int requester_agent_id
-    int worker_agent_id
-    string capability
-    string task_type
-    string status
-    jsonb input_payload
-    jsonb output_payload
-  }
-
-  ActivityLog {
-    int id
-    string event_type
-    string message
-    int agent_id
-  }
-```
-
-## API surface (implemented)
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/health` | API health check |
-| POST | `/agents/register` | Register agent + capabilities |
-| GET | `/agents/search?capability=` | Find active agents by capability name |
-| GET | `/activity` | Recent activity log entries |
-| POST | `/sessions/dispatch` | Route task to worker, execute, store session |
-| GET | `/sessions` | List sessions (optional filters) |
-| GET | `/sessions/{id}` | Single session detail |
-
-There is no `GET /agents` list endpoint yet.
-
-## Worker contract (current)
-
-Workers are reached at:
-
-`POST {agent.endpoint_url}/execute`
-
-Request body:
-
-```json
-{
-  "session_id": 1,
-  "task_type": "summarize_text",
-  "capability": "summarization",
-  "input_payload": {}
-}
-```
-
-Response: JSON object stored as `output_payload` on success.
-
-## Repository layout
-
-```
-backend/           Exchange API
-frontend/          Developer dashboard (not the product)
-demo_agents/       Local demo worker (summarizer)
-docs/              Living engineering documentation
-```
+`backend/tests/` contains pytest coverage for core orchestration routes and failure paths.
 
 ## Operational notes
 
-- Dispatch is **synchronous** in the API request (no job queue).
-- Tables are created on API startup via SQLAlchemy `create_all`.
-- CORS allows the dashboard origin (`localhost:3000`) only.
+- Dispatch is synchronous.
+- Routing requires healthy active workers.
+- Worker reliability metrics are updated after dispatch.
+- For existing local DBs created before Alembic, use migration/reset guidance in `backend/README.md`.

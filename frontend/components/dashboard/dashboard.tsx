@@ -8,6 +8,7 @@ import { CapabilitySearchPanel } from "@/components/dashboard/capability-search-
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { HealthStatusPanel } from "@/components/dashboard/health-status-panel";
 import { RegisteredAgentsPanel } from "@/components/dashboard/registered-agents-panel";
+import { RoutingPanel } from "@/components/dashboard/routing-panel";
 import { RunTaskDemoPanel } from "@/components/dashboard/run-task-demo-panel";
 import { SessionsPanel } from "@/components/dashboard/sessions-panel";
 import type { Agent } from "@/types";
@@ -49,6 +50,8 @@ export function Dashboard() {
           <RegisteredAgentsPanel discoveredAgents={discoveredAgents} />
           <CapabilitySearchPanel onAgentsFound={handleAgentsFound} />
         </div>
+
+        <RoutingPanel />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <RunTaskDemoPanel onDispatchComplete={handleDispatchComplete} />

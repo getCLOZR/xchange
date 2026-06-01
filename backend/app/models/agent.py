@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -17,6 +18,13 @@ class Agent(Base):
     version: Mapped[str] = mapped_column(String(50), nullable=False)
     cost_credits: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_healthy: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    avg_response_time_ms: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_sessions: Mapped[int] = mapped_column(Integer, default=0)
+    successful_sessions: Mapped[int] = mapped_column(Integer, default=0)
+    failed_sessions: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )

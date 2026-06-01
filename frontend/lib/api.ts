@@ -2,10 +2,14 @@ import axios, { isAxiosError } from "axios";
 
 import type {
   ActivityListResponse,
+  AgentListResponse,
   AgentSearchResponse,
+  BulkHealthCheckResponse,
   DispatchRequest,
   DispatchResponse,
   HealthResponse,
+  HealthCheckResponse,
+  RoutingPreviewResponse,
   Session,
   SessionListResponse,
 } from "@/types";
@@ -34,6 +38,31 @@ export async function searchAgentsByCapability(
   return data;
 }
 
+export async function getAgents(params?: {
+  active?: boolean;
+  healthy?: boolean;
+  limit?: number;
+}): Promise<AgentListResponse> {
+  const { data } = await api.get<AgentListResponse>("/agents", { params });
+  return data;
+}
+
+export async function checkAgentHealth(
+  agentId: number
+): Promise<HealthCheckResponse> {
+  const { data } = await api.post<HealthCheckResponse>(
+    `/agents/${agentId}/health-check`
+  );
+  return data;
+}
+
+export async function checkAllAgentsHealth(): Promise<BulkHealthCheckResponse> {
+  const { data } = await api.post<BulkHealthCheckResponse>(
+    "/agents/health-check"
+  );
+  return data;
+}
+
 export async function getActivity(
   limit = 50
 ): Promise<ActivityListResponse> {
@@ -56,6 +85,21 @@ export async function getSessions(params?: {
 
 export async function getSession(sessionId: number): Promise<Session> {
   const { data } = await api.get<Session>(`/sessions/${sessionId}`);
+  return data;
+}
+
+export async function getRoutingPreview(
+  capability: string,
+  options?: { requesterAgentId?: number }
+): Promise<RoutingPreviewResponse> {
+  const { data } = await api.get<RoutingPreviewResponse>("/routing/preview", {
+    params: {
+      capability,
+      ...(options?.requesterAgentId != null
+        ? { requester_agent_id: options.requesterAgentId }
+        : {}),
+    },
+  });
   return data;
 }
 

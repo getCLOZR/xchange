@@ -1,18 +1,29 @@
 # CLOZR Exchange API
 
-Domain-agnostic agent coordination API: registration, discovery, sessions, and task dispatch.
+Domain-agnostic agent coordination API: registration, discovery, orchestration sessions, worker health checks, and activity logs.
 
-## Setup
+## Configuration
+
+Runtime settings are centralized in `app/core/config.py` using `pydantic-settings`.
+
+Copy and edit environment file:
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 cp .env.example .env
-# Edit DATABASE_URL if needed (Homebrew Mac: postgresql://YOUR_USER@localhost:5432/clozr_exchange)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+Required variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `APP_NAME` | API display name |
+| `ENVIRONMENT` | Runtime environment label |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BACKEND_HOST` | Uvicorn bind host |
+| `BACKEND_PORT` | Uvicorn bind port |
+| `WORKER_HTTP_TIMEOUT_SECONDS` | Worker `/execute` HTTP timeout |
+| `CORS_ORIGINS` | Comma-separated allowed dashboard origins |
+| `LOG_LEVEL` | Python log level |
 
 ## Endpoints
 
@@ -20,30 +31,62 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 |--------|------|-------------|
 | GET | `/health` | API health |
 | POST | `/agents/register` | Register agent + capabilities |
-| GET | `/agents/search?capability=` | Find agents by capability |
+| GET | `/agents` | List agents with reliability fields |
+| GET | `/agents/search?capability=` | Capability search |
+| POST | `/agents/{agent_id}/health-check` | Check one worker health |
+| POST | `/agents/health-check` | Check all active agents |
 | GET | `/activity` | Recent activity logs |
-| POST | `/sessions/dispatch` | Route task to worker and execute |
-| GET | `/sessions` | List sessions (optional `status`, `capability`, `limit`) |
-| GET | `/sessions/{session_id}` | Get one session |
+| POST | `/sessions/dispatch` | Route + dispatch task |
+| GET | `/sessions` | List sessions |
+| GET | `/sessions/{session_id}` | Session detail |
+| GET | `/routing/preview?capability=` | Ranked routing preview (no session) |
 
 Interactive docs: http://localhost:8000/docs
 
----
+### Multi-worker demo (routing v0.2)
 
-## Full orchestration test flow
-
-Run **three terminals**: exchange API (8000), demo worker (9001), and curl (or use `/docs`).
-
-### 1. Start exchange API
+Run three summarizer workers (from repo root, with backend venv):
 
 ```bash
-cd backend && source .venv/bin/activate
+source backend/.venv/bin/activate
+uvicorn demo_agents.summarizer_worker_a.main:app --reload --port 9001
+uvicorn demo_agents.summarizer_worker_b.main:app --reload --port 9002
+uvicorn demo_agents.summarizer_worker_c.main:app --reload --port 9003
+```
+
+Register each on different ports with capability `summarization`, run health checks, then use `/routing/preview` or dispatch.
+
+---
+
+## Local development
+
+### 1) Install dependencies
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+### 2) Run migrations
+
+```bash
+cd backend
+source .venv/bin/activate
+alembic upgrade head
+```
+
+### 3) Start backend
+
+```bash
+cd backend
+source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. Start demo summarizer worker
-
-From repo root (install FastAPI in backend venv or any env with `fastapi` + `uvicorn`):
+### 4) Start demo worker
 
 ```bash
 cd /path/to/xchange
@@ -51,108 +94,112 @@ source backend/.venv/bin/activate
 uvicorn demo_agents.summarizer_worker.main:app --reload --host 0.0.0.0 --port 9001
 ```
 
-Verify worker:
+### 5) Start frontend dashboard
 
 ```bash
-curl http://localhost:9001/health
-```
-
-### 3. Register a requester agent
-
-```bash
-curl -X POST http://localhost:8000/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Demo Requester Agent",
-    "description": "Requests work from the exchange.",
-    "endpoint_url": "http://localhost:8999",
-    "owner_name": "CLOZR Demo",
-    "version": "0.1.0",
-    "cost_credits": 0,
-    "capabilities": [
-      {
-        "name": "orchestration_client",
-        "description": "Can request orchestration from the exchange.",
-        "input_schema": {},
-        "output_schema": {}
-      }
-    ]
-  }'
-```
-
-Note the returned `"id"` (use as `requester_agent_id` below; often `1` on a fresh DB).
-
-### 4. Register the demo summarizer worker
-
-```bash
-curl -X POST http://localhost:8000/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Demo Summarizer Agent",
-    "description": "A demo worker agent that summarizes text.",
-    "endpoint_url": "http://localhost:9001",
-    "owner_name": "CLOZR Demo",
-    "version": "0.1.0",
-    "cost_credits": 1,
-    "capabilities": [
-      {
-        "name": "summarization",
-        "description": "Summarizes text input.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "text": { "type": "string" }
-          },
-          "required": ["text"]
-        },
-        "output_schema": {
-          "type": "object",
-          "properties": {
-            "result": { "type": "string" }
-          }
-        }
-      }
-    ]
-  }'
-```
-
-### 5. Dispatch a task
-
-Replace `1` with your requester agent id if different:
-
-```bash
-curl -X POST http://localhost:8000/sessions/dispatch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requester_agent_id": 1,
-    "capability": "summarization",
-    "task_type": "summarize_text",
-    "input_payload": {
-      "text": "CLOZR Exchange is a domain-agnostic orchestration layer for AI agents that register capabilities, discover workers, and coordinate task execution through sessions and activity logs."
-    }
-  }'
-```
-
-Expected: `"status": "completed"` and `output_payload` with a demo summary.
-
-### 6. Inspect session and activity
-
-```bash
-curl http://localhost:8000/sessions
-curl http://localhost:8000/sessions/1
-curl http://localhost:8000/activity
+cd frontend
+npm install
+npm run dev
 ```
 
 ---
 
-## Dispatch flow (synchronous)
+## Docker development
 
-1. Validate requester agent exists  
-2. Find active worker with matching capability (excludes requester)  
-3. Create session → log `session_created`, `worker_selected`  
-4. Set `running` → log `task_dispatched`  
-5. `POST {worker.endpoint_url}/execute` via httpx  
-6. On success: `completed` + `output_payload` + log `task_completed`  
-7. On failure: `failed` + `error_message` + log `task_failed`  
+From repository root:
 
-If no worker is available, a failed session is recorded and the API returns **404** with session details in the error body.
+```bash
+docker compose up --build
+```
+
+Services:
+
+- `postgres` on `5432`
+- `backend` on `8000` (runs `alembic upgrade head` before API start)
+- `demo-worker` on `9001`
+
+Run migrations manually if needed:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+---
+
+## Testing
+
+From `backend/`:
+
+```bash
+source .venv/bin/activate
+pytest
+```
+
+Tests cover:
+
+- health endpoint
+- agent registration
+- capability search
+- worker health check route
+- dispatch success path
+- dispatch failure when no healthy worker exists
+
+---
+
+## Alembic
+
+Run from `backend/`:
+
+```bash
+# create migration (after model changes)
+alembic revision --autogenerate -m "describe change"
+
+# apply migrations
+alembic upgrade head
+
+# rollback one revision
+alembic downgrade -1
+```
+
+Schema evolution is managed by Alembic. The API no longer uses `create_all()` on startup.
+
+---
+
+## Existing local databases
+
+If your DB was created before reliability fields or before Alembic:
+
+**Option A (recommended for local dev reset):**
+
+```bash
+dropdb clozr_exchange
+createdb clozr_exchange
+cd backend && source .venv/bin/activate && alembic upgrade head
+```
+
+**Option B (keep data, add missing columns manually):**
+
+```sql
+ALTER TABLE agents
+  ADD COLUMN IF NOT EXISTS is_healthy boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS last_health_check timestamp NULL,
+  ADD COLUMN IF NOT EXISTS last_seen_at timestamp NULL,
+  ADD COLUMN IF NOT EXISTS avg_response_time_ms double precision NULL,
+  ADD COLUMN IF NOT EXISTS total_sessions integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS successful_sessions integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS failed_sessions integer NOT NULL DEFAULT 0;
+```
+
+Then stamp/align Alembic revision state as needed.
+
+---
+
+## Reliability test flow
+
+1. Start backend and demo worker
+2. Register requester + summarizer worker
+3. `POST /agents/health-check`
+4. `POST /sessions/dispatch` (expect success)
+5. Stop demo worker
+6. `POST /agents/health-check` again
+7. Dispatch again (expect failed session: no healthy worker)

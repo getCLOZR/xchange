@@ -24,6 +24,7 @@ class Session(Base):
     input_payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     output_payload: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    routing_trace: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

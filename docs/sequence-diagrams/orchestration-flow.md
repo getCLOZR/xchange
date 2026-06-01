@@ -1,6 +1,6 @@
 # Orchestration Flow
 
-This sequence reflects the **current synchronous** implementation of `POST /sessions/dispatch`. There is no background queue; the HTTP client waits until the worker responds or times out (30s worker timeout via httpx).
+This sequence reflects the **current synchronous** implementation of `POST /sessions/dispatch`. There is no background queue; the caller waits for worker execution or failure.
 
 ## End-to-end sequence
 
@@ -20,8 +20,10 @@ sequenceDiagram
   end
 
   X->>DB: Search active agents by capability
-  alt No worker available
+  X->>DB: Filter healthy workers + rank deterministically
+  alt No healthy worker available
     X->>DB: Create session (failed)
+    X->>DB: Log worker_selection_failed
     X->>DB: Log task_failed
     X-->>R: 404 + session detail
   end
@@ -40,9 +42,10 @@ sequenceDiagram
     X->>DB: Update session (completed,<br/>output_payload, completed_at)
     X->>DB: Log task_completed
     X-->>R: DispatchResponse (completed)
-  else Worker error or timeout
+  else Worker timeout, connection error, non-2xx, invalid JSON
     W-->>X: Error / non-2xx
     X->>DB: Update session (failed,<br/>error_message, completed_at)
+    X->>DB: Update worker failed metrics
     X->>DB: Log task_failed
     X-->>R: DispatchResponse (failed)
   end
@@ -66,10 +69,13 @@ Statuses in use today: `pending`, `running`, `completed`, `failed`.
 | Event | When |
 |-------|------|
 | `session_created` | Session row created after worker match |
+| `worker_selection_failed` | No healthy worker available for requested capability |
 | `worker_selected` | Worker agent chosen for capability |
 | `task_dispatched` | HTTP call to worker `/execute` begins |
 | `task_completed` | Worker response stored successfully |
 | `task_failed` | No worker, worker error, or dispatch failure |
+| `worker_health_check_passed` | Worker `/health` probe succeeded |
+| `worker_health_check_failed` | Worker `/health` probe failed |
 
 Registration uses a separate event: `agent_registered`.
 

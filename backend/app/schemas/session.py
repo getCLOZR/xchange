@@ -19,6 +19,7 @@ class DispatchResponse(BaseModel):
     task_type: str
     output_payload: Optional[dict[str, Any]] = None
     error_message: Optional[str] = None
+    routing_trace: Optional[dict[str, Any]] = None
 
 
 class SessionRead(BaseModel):
@@ -31,6 +32,7 @@ class SessionRead(BaseModel):
     input_payload: dict[str, Any]
     output_payload: Optional[dict[str, Any]]
     error_message: Optional[str]
+    routing_trace: Optional[dict[str, Any]] = None
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
     created_at: datetime

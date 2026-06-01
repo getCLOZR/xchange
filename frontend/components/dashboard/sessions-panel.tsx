@@ -16,7 +16,7 @@ import { usePoll } from "@/hooks/use-poll";
 import { getApiErrorMessage, getSession, getSessions } from "@/lib/api";
 import { sessionStatusBadgeVariant } from "@/lib/session-utils";
 import { cn, formatTimestamp } from "@/lib/utils";
-import type { Session } from "@/types";
+import type { RoutingTrace, Session } from "@/types";
 
 interface SessionsPanelProps {
   refreshKey?: number;
@@ -250,6 +250,69 @@ function SessionDetailView({
           </p>
           <p className="text-amber-400/90">{session.error_message}</p>
         </div>
+      )}
+      {session.routing_trace && (
+        <RoutingTraceView trace={session.routing_trace as RoutingTrace} />
+      )}
+    </div>
+  );
+}
+
+function RoutingTraceView({ trace }: { trace: RoutingTrace }) {
+  const attempts = trace.attempts ?? [];
+  const candidates = trace.candidates ?? [];
+
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <p className="text-muted-foreground uppercase tracking-wide text-[10px]">
+        routing_trace
+      </p>
+      {trace.selection_reason && (
+        <p className="text-[11px] text-muted-foreground">
+          {trace.selection_reason}
+        </p>
+      )}
+      {trace.selected_agent_id != null && (
+        <p className="text-[11px]">
+          selected worker:{" "}
+          <span className="text-foreground">{trace.selected_agent_id}</span>
+        </p>
+      )}
+      {attempts.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] text-muted-foreground uppercase">
+            Failover attempts
+          </p>
+          <ul className="space-y-1">
+            {attempts.map((a, i) => (
+              <li
+                key={`${a.agent_id}-${i}`}
+                className="rounded border border-border px-2 py-1 text-[11px]"
+              >
+                worker {a.agent_id}
+                {a.name ? ` (${a.name})` : ""} —{" "}
+                <Badge
+                  variant={
+                    a.outcome === "succeeded" ? "default" : "destructive"
+                  }
+                  className="text-[10px] py-0"
+                >
+                  {a.outcome}
+                </Badge>
+                {a.error && (
+                  <span className="block text-amber-400/90 mt-0.5">
+                    {a.error}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {candidates.length > 0 && attempts.length === 0 && (
+        <pre className="rounded border border-border bg-background p-2 overflow-x-auto text-[11px] max-h-40">
+          {JSON.stringify({ candidates }, null, 2)}
+        </pre>
       )}
     </div>
   );
