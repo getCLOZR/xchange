@@ -10,6 +10,7 @@ from app.models.agent import Agent
 from app.models.capability import Capability
 from app.schemas.agent import AgentHealthStatus, AgentRegisterRequest, HealthCheckResponse
 from app.services.activity_service import log_activity
+from app.services.contract_validation_service import validate_health_response
 
 HEALTH_CHECK_TIMEOUT_SECONDS = 3.0
 
@@ -101,6 +102,15 @@ def check_agent_health(db: Session, agent: Agent) -> HealthCheckResponse:
 
         if response.status_code >= 400:
             raise RuntimeError(f"Health endpoint returned HTTP {response.status_code}")
+
+        try:
+            health_data = response.json()
+        except ValueError as exc:
+            raise RuntimeError("Health response was not valid JSON") from exc
+
+        _, health_error = validate_health_response(health_data)
+        if health_error:
+            raise RuntimeError(health_error)
 
         agent.is_healthy = True
         agent.last_health_check = checked_at

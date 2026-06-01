@@ -43,6 +43,8 @@ Required variables:
 
 Interactive docs: http://localhost:8000/docs
 
+Worker contract: [docs/specs/clozr-agent-contract-v0.1.md](../docs/specs/clozr-agent-contract-v0.1.md)
+
 ### Multi-worker demo (routing v0.2)
 
 Run three summarizer workers (from repo root, with backend venv):

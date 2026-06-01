@@ -14,6 +14,12 @@ from app.models.session import Session
 from app.schemas.session import DispatchRequest, DispatchResponse, SessionRead
 from app.services.activity_service import log_activity
 from app.services.agent_service import get_agent_by_id
+from app.services.contract_validation_service import (
+    ExecuteParseError,
+    ExecuteParseInvalid,
+    ExecuteParseSuccess,
+    parse_execute_response,
+)
 from app.services.routing_service import RoutingSelection, select_ranked_workers
 
 settings = get_settings()
@@ -181,9 +187,14 @@ def dispatch_task(db: DbSession, payload: DispatchRequest) -> DispatchResponse:
                 }
             )
             session.routing_trace = trace
+            event_type = (
+                "invalid_worker_response"
+                if exc.error_code == "INVALID_WORKER_RESPONSE"
+                else "task_failed_attempt"
+            )
             log_activity(
                 db,
-                event_type="task_failed_attempt",
+                event_type=event_type,
                 message=(
                     f"Session {session.id}: attempt on worker '{worker.name}' "
                     f"(id={worker.id}) failed — {exc}"
@@ -336,9 +347,25 @@ def _call_worker_execute(
         raise WorkerDispatchError("Worker response was not valid JSON", elapsed_ms) from exc
 
     if not isinstance(data, dict):
-        raise WorkerDispatchError("Worker response must be a JSON object", elapsed_ms)
+        raise WorkerDispatchError(
+            "Worker response must be a JSON object",
+            elapsed_ms,
+            error_code="INVALID_WORKER_RESPONSE",
+        )
 
-    return data, elapsed_ms
+    parsed = parse_execute_response(data)
+    if isinstance(parsed, ExecuteParseInvalid):
+        raise WorkerDispatchError(
+            parsed.reason,
+            elapsed_ms,
+            error_code="INVALID_WORKER_RESPONSE",
+        )
+    if isinstance(parsed, ExecuteParseError):
+        detail_msg = f"{parsed.error_code}: {parsed.message}"
+        raise WorkerDispatchError(detail_msg, elapsed_ms, error_code=parsed.error_code)
+    assert isinstance(parsed, ExecuteParseSuccess)
+    observed_ms = parsed.execution_time_ms if parsed.execution_time_ms else elapsed_ms
+    return parsed.output_payload, observed_ms
 
 
 def list_sessions(
@@ -360,9 +387,15 @@ def get_session_by_id(db: DbSession, session_id: int) -> Optional[Session]:
 
 
 class WorkerDispatchError(RuntimeError):
-    def __init__(self, message: str, elapsed_ms: Optional[float]):
+    def __init__(
+        self,
+        message: str,
+        elapsed_ms: Optional[float],
+        error_code: Optional[str] = None,
+    ):
         super().__init__(message)
         self.elapsed_ms = elapsed_ms
+        self.error_code = error_code
 
 
 def _apply_worker_session_metrics(

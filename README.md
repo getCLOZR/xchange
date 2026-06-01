@@ -52,6 +52,8 @@ See [backend/README.md](backend/README.md) for API setup, session dispatch (`POS
 
 ## Documentation
 
+Agent contract: [docs/specs/clozr-agent-contract-v0.1.md](docs/specs/clozr-agent-contract-v0.1.md).
+
 Living engineering docs: [docs/architecture/current-architecture.md](docs/architecture/current-architecture.md), [docs/sequence-diagrams/orchestration-flow.md](docs/sequence-diagrams/orchestration-flow.md), [docs/milestones/current-state.md](docs/milestones/current-state.md), [docs/vision/product-thesis.md](docs/vision/product-thesis.md), [docs/operations/production-foundation-v0.1.md](docs/operations/production-foundation-v0.1.md), [docs/operations/routing-engine-v0.2.md](docs/operations/routing-engine-v0.2.md).
 
 Backend setup (local, Docker, migrations, tests): [backend/README.md](backend/README.md).

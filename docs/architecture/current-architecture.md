@@ -9,7 +9,7 @@ CLOZR Exchange is **domain-agnostic AI agent coordination infrastructure**.
 | Exchange API | Registry, health checks, routing, sessions, activity logs |
 | PostgreSQL | Persistent state |
 | Alembic | Schema migrations |
-| Demo worker | External task executor (`/health`, `/execute`) |
+| Demo worker | External task executor implementing [CLOZR Agent Contract v0.1](../specs/clozr-agent-contract-v0.1.md) (`/health`, `/execute`) |
 | Developer dashboard | Internal observability UI |
 | Docker Compose | Optional local infrastructure stack |
 
@@ -29,6 +29,17 @@ All runtime settings are loaded from environment variables through `app/core/con
 Database schema is managed by Alembic migrations in `backend/alembic/versions/`.
 
 The API does **not** rely on `Base.metadata.create_all()` at startup.
+
+## CLOZR Agent Contract (v0.1)
+
+Compatible workers must implement:
+
+- `GET /health` → `{ status, agent_name, version }`
+- `POST /execute` → contract request body; response with `status: success` or `status: error`
+
+The Exchange validates responses via `contract_validation_service.py`. Invalid responses trigger failover and `invalid_worker_response` activity logs.
+
+Spec: [clozr-agent-contract-v0.1.md](../specs/clozr-agent-contract-v0.1.md)
 
 ## Routing engine (v0.2)
 
