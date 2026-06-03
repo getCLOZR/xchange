@@ -14,7 +14,9 @@ Future AI as interconnected networks of specialized autonomous agents—not isol
 
 1. **Backend** — `cd backend`, create venv, `pip install -r requirements.txt`, copy `.env.example` to `.env`, run `alembic upgrade head`, then `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 2. **Demo worker** — from repo root: `uvicorn demo_agents.summarizer_worker.main:app --reload --port 9001`
-3. **Frontend** — `cd frontend`, `npm install`, `npm run dev`
+3. **Frontend** — `cd frontend`, `npm install`, `npm run dev` → [Developer Console](http://localhost:3000)
+
+Most local testing actions can now be performed from the **Developer Dashboard / Control Plane** instead of curl. See [docs/features/developer-control-plane-v0.1.md](docs/features/developer-control-plane-v0.1.md).
 
 Details: [backend/README.md](backend/README.md)
 
@@ -51,6 +53,7 @@ python research_demo.py "What are AI agents?"
 ```
 
 Docs: [docs/demos/multi-agent-workflow-demo.md](docs/demos/multi-agent-workflow-demo.md)
+Workflow visibility in dashboard: [docs/features/workflow-observability-v0.1.md](docs/features/workflow-observability-v0.1.md)
 
 ## Testing
 

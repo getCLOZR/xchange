@@ -16,6 +16,8 @@ Snapshot of what is **implemented and runnable today**.
 - [x] CLOZR Agent Contract v0.1 (worker `/health` + `/execute` schemas and validation)
 - [x] External Agent Validation v0.1 (weather + translator agents, contract-only, no backend imports)
 - [x] Multi-Agent Workflow Demo v0.1 (search agent + research orchestrator example)
+- [x] Workflow Observability v0.1 (workflow events, `/workflows/recent`, dashboard panel)
+- [x] Developer Control Plane v0.1 (register, health check, dispatch, routing preview, session/workflow inspection in dashboard)
 - [x] Routing engine v0.2 (scoring, trace, failover, preview)
 - [x] Healthy-worker deterministic routing in dispatch
 - [x] Activity log API (`GET /activity`)

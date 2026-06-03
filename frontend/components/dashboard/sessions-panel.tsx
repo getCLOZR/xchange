@@ -1,8 +1,9 @@
 "use client";
 
 import { ChevronDown, ChevronRight, Layers, RefreshCw } from "lucide-react";
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
+import { CollapsibleBlock } from "@/components/dashboard/collapsible-block";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,19 +17,24 @@ import { usePoll } from "@/hooks/use-poll";
 import { getApiErrorMessage, getSession, getSessions } from "@/lib/api";
 import { sessionStatusBadgeVariant } from "@/lib/session-utils";
 import { cn, formatTimestamp } from "@/lib/utils";
-import type { RoutingTrace, Session } from "@/types";
+import type { RoutingCandidateScore, RoutingTrace, Session } from "@/types";
 
 interface SessionsPanelProps {
   refreshKey?: number;
+  highlightSessionId?: number | null;
 }
 
-export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
+export function SessionsPanel({
+  refreshKey = 0,
+  highlightSessionId = null,
+}: SessionsPanelProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Session | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const highlightRef = useRef<HTMLTableRowElement | null>(null);
 
   const fetchSessions = useCallback(async () => {
     setError(null);
@@ -63,6 +69,20 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
     }
   }
 
+  useEffect(() => {
+    if (highlightSessionId == null) return;
+    void (async () => {
+      await toggleExpand(highlightSessionId);
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 300);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- highlight only when id changes
+  }, [highlightSessionId]);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
@@ -72,7 +92,7 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
             Orchestration sessions
           </CardTitle>
           <CardDescription>
-            GET /sessions — request → route → execute → result
+            GET /sessions — expand a row for payloads and routing trace
           </CardDescription>
         </div>
         <Button
@@ -93,7 +113,7 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
         {error && (
           <p className="mb-3 text-xs text-amber-400/90 font-mono">{error}</p>
         )}
-        <div className="overflow-x-auto rounded-md border border-border max-h-[420px] overflow-y-auto">
+        <div className="overflow-x-auto rounded-md border border-border max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-[1]">
               <tr className="border-b border-border text-left text-muted-foreground">
@@ -105,17 +125,16 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
                 <th className="p-2 font-medium">Worker</th>
                 <th className="p-2 font-medium">Status</th>
                 <th className="p-2 font-medium">Created</th>
-                <th className="p-2 font-medium">Completed</th>
               </tr>
             </thead>
             <tbody>
               {!loading && sessions.length === 0 && (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={8}
                     className="p-6 text-center text-muted-foreground"
                   >
-                    No orchestration sessions yet.
+                    No orchestration sessions yet. Dispatch a task to create one.
                   </td>
                 </tr>
               )}
@@ -124,9 +143,14 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
                 return (
                   <Fragment key={session.id}>
                     <tr
+                      ref={
+                        highlightSessionId === session.id ? highlightRef : undefined
+                      }
                       className={cn(
                         "border-b border-border/50 hover:bg-muted/20 cursor-pointer",
-                        isOpen && "bg-muted/30"
+                        isOpen && "bg-muted/30",
+                        highlightSessionId === session.id &&
+                          "ring-1 ring-violet-500/60 bg-violet-500/5"
                       )}
                       onClick={() => toggleExpand(session.id)}
                     >
@@ -156,17 +180,14 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
                       <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">
                         {formatTimestamp(session.created_at)}
                       </td>
-                      <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">
-                        {session.completed_at
-                          ? formatTimestamp(session.completed_at)
-                          : "—"}
-                      </td>
                     </tr>
                     {isOpen && (
                       <tr className="border-b border-border bg-muted/10">
-                        <td colSpan={9} className="p-4">
+                        <td colSpan={8} className="p-4">
                           <SessionDetailView
-                            session={detail?.id === session.id ? detail : session}
+                            session={
+                              detail?.id === session.id ? detail : session
+                            }
                             loading={detailLoading}
                           />
                         </td>
@@ -183,6 +204,14 @@ export function SessionsPanel({ refreshKey = 0 }: SessionsPanelProps) {
   );
 }
 
+function JsonPre({ data }: { data: unknown }) {
+  return (
+    <pre className="text-[11px] font-mono overflow-x-auto max-h-40 rounded border border-border bg-background p-2">
+      {JSON.stringify(data, null, 2)}
+    </pre>
+  );
+}
+
 function SessionDetailView({
   session,
   loading,
@@ -196,124 +225,142 @@ function SessionDetailView({
     );
   }
 
+  const trace = session.routing_trace as RoutingTrace | null | undefined;
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2 text-xs font-mono">
-      <div className="space-y-2">
-        <p className="text-muted-foreground uppercase tracking-wide text-[10px]">
-          Timestamps
-        </p>
-        <ul className="space-y-1 text-muted-foreground">
-          <li>created: {formatTimestamp(session.created_at)}</li>
-          <li>
-            started:{" "}
-            {session.started_at
-              ? formatTimestamp(session.started_at)
-              : "—"}
-          </li>
-          <li>
-            completed:{" "}
-            {session.completed_at
-              ? formatTimestamp(session.completed_at)
-              : "—"}
-          </li>
-          <li>updated: {formatTimestamp(session.updated_at)}</li>
-        </ul>
-        {session.worker_agent_id && (
-          <p className="text-muted-foreground">
-            worker agent id:{" "}
-            <span className="text-foreground">{session.worker_agent_id}</span>
-          </p>
+    <div className="space-y-2 text-xs font-mono">
+      <div className="flex flex-wrap gap-3 text-muted-foreground text-[11px]">
+        <span>created {formatTimestamp(session.created_at)}</span>
+        {session.started_at && (
+          <span>started {formatTimestamp(session.started_at)}</span>
+        )}
+        {session.completed_at && (
+          <span>completed {formatTimestamp(session.completed_at)}</span>
+        )}
+        {session.worker_agent_id != null && (
+          <span className="text-foreground">
+            worker {session.worker_agent_id}
+          </span>
         )}
       </div>
-      <div className="space-y-2 sm:col-span-1">
-        <p className="text-muted-foreground uppercase tracking-wide text-[10px]">
-          input_payload
-        </p>
-        <pre className="rounded border border-border bg-background p-2 overflow-x-auto text-[11px] max-h-32">
-          {JSON.stringify(session.input_payload, null, 2)}
-        </pre>
-      </div>
-      {session.output_payload && (
-        <div className="space-y-2 sm:col-span-2">
-          <p className="text-muted-foreground uppercase tracking-wide text-[10px]">
-            output_payload
-          </p>
-          <pre className="rounded border border-border bg-background p-2 overflow-x-auto text-[11px] max-h-40">
-            {JSON.stringify(session.output_payload, null, 2)}
-          </pre>
-        </div>
+
+      <CollapsibleBlock title="input_payload" defaultOpen>
+        <JsonPre data={session.input_payload} />
+      </CollapsibleBlock>
+
+      {session.output_payload != null && (
+        <CollapsibleBlock title="output_payload" defaultOpen={false}>
+          <JsonPre data={session.output_payload} />
+        </CollapsibleBlock>
       )}
+
       {session.error_message && (
-        <div className="space-y-1 sm:col-span-2">
-          <p className="text-muted-foreground uppercase tracking-wide text-[10px]">
-            error_message
+        <CollapsibleBlock title="error_message" defaultOpen>
+          <p className="text-amber-400/90 text-[11px] p-1">
+            {session.error_message}
           </p>
-          <p className="text-amber-400/90">{session.error_message}</p>
-        </div>
+        </CollapsibleBlock>
       )}
-      {session.routing_trace && (
-        <RoutingTraceView trace={session.routing_trace as RoutingTrace} />
-      )}
+
+      {trace && <RoutingTraceDetail trace={trace} />}
     </div>
   );
 }
 
-function RoutingTraceView({ trace }: { trace: RoutingTrace }) {
+function RoutingTraceDetail({ trace }: { trace: RoutingTrace }) {
   const attempts = trace.attempts ?? [];
-  const candidates = trace.candidates ?? [];
+  const candidates = (trace.candidates ?? []) as unknown as RoutingCandidateScore[];
 
   return (
-    <div className="space-y-2 sm:col-span-2">
-      <p className="text-muted-foreground uppercase tracking-wide text-[10px]">
-        routing_trace
-      </p>
-      {trace.selection_reason && (
-        <p className="text-[11px] text-muted-foreground">
-          {trace.selection_reason}
-        </p>
-      )}
-      {trace.selected_agent_id != null && (
-        <p className="text-[11px]">
-          selected worker:{" "}
-          <span className="text-foreground">{trace.selected_agent_id}</span>
-        </p>
-      )}
-      {attempts.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-[10px] text-muted-foreground uppercase">
-            Failover attempts
+    <CollapsibleBlock title="routing_trace" defaultOpen>
+      <div className="space-y-2 text-[11px]">
+        {trace.capability && (
+          <p className="text-muted-foreground">
+            capability: <span className="text-foreground">{trace.capability}</span>
           </p>
-          <ul className="space-y-1">
-            {attempts.map((a, i) => (
-              <li
-                key={`${a.agent_id}-${i}`}
-                className="rounded border border-border px-2 py-1 text-[11px]"
-              >
-                worker {a.agent_id}
-                {a.name ? ` (${a.name})` : ""} —{" "}
-                <Badge
-                  variant={
-                    a.outcome === "succeeded" ? "default" : "destructive"
-                  }
-                  className="text-[10px] py-0"
+        )}
+        {trace.filters && trace.filters.length > 0 && (
+          <p className="text-muted-foreground">
+            filters: {trace.filters.join(", ")}
+          </p>
+        )}
+        {trace.selected_agent_id != null && (
+          <p>
+            selected worker:{" "}
+            <span className="text-foreground">{trace.selected_agent_id}</span>
+          </p>
+        )}
+        {trace.selection_reason && (
+          <p className="text-muted-foreground">{trace.selection_reason}</p>
+        )}
+
+        {candidates.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase text-muted-foreground">
+              Candidate workers
+            </p>
+            <ul className="space-y-1">
+              {candidates.map((c, i) => (
+                <li
+                  key={`${c.agent_id ?? i}-${i}`}
+                  className="rounded border border-border px-2 py-1"
                 >
-                  {a.outcome}
-                </Badge>
-                {a.error && (
-                  <span className="block text-amber-400/90 mt-0.5">
-                    {a.error}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {candidates.length > 0 && attempts.length === 0 && (
-        <pre className="rounded border border-border bg-background p-2 overflow-x-auto text-[11px] max-h-40">
-          {JSON.stringify({ candidates }, null, 2)}
-        </pre>
-      )}
-    </div>
+                  #{c.agent_id} {c.name ?? ""} — score{" "}
+                  {c.score != null ? c.score.toFixed(3) : "—"}
+                  {c.score_breakdown && (
+                    <span className="block text-muted-foreground text-[10px]">
+                      {Object.entries(c.score_breakdown)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(", ")}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {attempts.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase text-muted-foreground">
+              Failover attempts
+            </p>
+            <ul className="space-y-1">
+              {attempts.map((a, i) => (
+                <li
+                  key={`${a.agent_id}-${i}`}
+                  className="rounded border border-border px-2 py-1"
+                >
+                  worker {a.agent_id}
+                  {a.name ? ` (${a.name})` : ""} —{" "}
+                  <Badge
+                    variant={
+                      a.outcome === "succeeded" ? "success" : "warning"
+                    }
+                    className="text-[10px] py-0"
+                  >
+                    {a.outcome}
+                  </Badge>
+                  {a.score != null && (
+                    <span className="text-muted-foreground ml-1">
+                      score {a.score.toFixed(3)}
+                    </span>
+                  )}
+                  {a.error && (
+                    <span className="block text-amber-400/90 mt-0.5">
+                      {a.error}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <CollapsibleBlock title="routing_trace (raw JSON)" defaultOpen={false}>
+          <JsonPre data={trace} />
+        </CollapsibleBlock>
+      </div>
+    </CollapsibleBlock>
   );
 }

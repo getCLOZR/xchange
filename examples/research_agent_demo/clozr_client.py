@@ -26,13 +26,59 @@ class ClozrClient:
         event_type: str,
         message: str,
         agent_id: Optional[int] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {"event_type": event_type, "message": message}
         if agent_id is not None:
             payload["agent_id"] = agent_id
+        if metadata is not None:
+            payload["metadata"] = metadata
         response = httpx.post(f"{self.base_url}/activity/log", json=payload, timeout=10.0)
         response.raise_for_status()
         return response.json()
+
+    def log_workflow_event(
+        self,
+        event_type: str,
+        workflow_id: str,
+        workflow_name: str,
+        message: str,
+        agent_id: Optional[int] = None,
+        step_index: Optional[int] = None,
+        capability: Optional[str] = None,
+        task_type: Optional[str] = None,
+        session_id: Optional[int] = None,
+        worker_agent_id: Optional[int] = None,
+        status: Optional[str] = None,
+        question: Optional[str] = None,
+        error_message: Optional[str] = None,
+    ) -> dict[str, Any]:
+        metadata: dict[str, Any] = {
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+        }
+        if step_index is not None:
+            metadata["step_index"] = step_index
+        if capability is not None:
+            metadata["capability"] = capability
+        if task_type is not None:
+            metadata["task_type"] = task_type
+        if session_id is not None:
+            metadata["session_id"] = session_id
+        if worker_agent_id is not None:
+            metadata["worker_agent_id"] = worker_agent_id
+        if status is not None:
+            metadata["status"] = status
+        if question is not None:
+            metadata["question"] = question
+        if error_message is not None:
+            metadata["error_message"] = error_message
+        return self.log_activity(
+            event_type=event_type,
+            message=message,
+            agent_id=agent_id,
+            metadata=metadata,
+        )
 
     def dispatch(
         self,

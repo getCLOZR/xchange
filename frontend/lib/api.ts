@@ -2,7 +2,9 @@ import axios, { isAxiosError } from "axios";
 
 import type {
   ActivityListResponse,
+  Agent,
   AgentListResponse,
+  AgentRegisterRequest,
   AgentSearchResponse,
   BulkHealthCheckResponse,
   DispatchRequest,
@@ -12,6 +14,7 @@ import type {
   RoutingPreviewResponse,
   Session,
   SessionListResponse,
+  WorkflowListResponse,
 } from "@/types";
 
 const baseURL =
@@ -47,6 +50,13 @@ export async function getAgents(params?: {
   return data;
 }
 
+export async function registerAgent(
+  payload: AgentRegisterRequest
+): Promise<Agent> {
+  const { data } = await api.post<Agent>("/agents/register", payload);
+  return data;
+}
+
 export async function checkAgentHealth(
   agentId: number
 ): Promise<HealthCheckResponse> {
@@ -60,6 +70,15 @@ export async function checkAllAgentsHealth(): Promise<BulkHealthCheckResponse> {
   const { data } = await api.post<BulkHealthCheckResponse>(
     "/agents/health-check"
   );
+  return data;
+}
+
+export async function getRecentWorkflows(
+  limit = 20
+): Promise<WorkflowListResponse> {
+  const { data } = await api.get<WorkflowListResponse>("/workflows/recent", {
+    params: { limit },
+  });
   return data;
 }
 
@@ -114,22 +133,65 @@ export async function dispatchSessionTask(
   return data;
 }
 
+/** Alias for developer console dispatch form. */
+export const dispatchTask = dispatchSessionTask;
+
+/** Alias for single-agent health check. */
+export const checkAgentHealthById = checkAgentHealth;
+
+/** Alias for bulk health check. */
+export const checkAllAgentHealth = checkAllAgentsHealth;
+
 export function getApiBaseUrl(): string {
   return baseURL;
 }
 
 export function getApiErrorMessage(error: unknown): string {
   if (isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") return detail;
+    if (!error.response) {
+      return `Backend unavailable at ${baseURL}. Is the API running?`;
+    }
+    const status = error.response.status;
+    const detail = error.response.data?.detail;
+    if (typeof detail === "string") {
+      return formatKnownApiError(detail, status);
+    }
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) => {
+          if (item && typeof item === "object" && "msg" in item) {
+            return String((item as { msg: string }).msg);
+          }
+          return JSON.stringify(item);
+        })
+        .join("; ");
+    }
     if (detail && typeof detail === "object") {
       if ("message" in detail && typeof detail.message === "string") {
-        return detail.message;
+        return formatKnownApiError(detail.message, status);
       }
       return JSON.stringify(detail);
     }
+    if (status === 404) return "Resource not found (404)";
+    if (status >= 500) return `Server error (${status}). Check API logs.`;
     return error.message;
   }
   if (error instanceof Error) return error.message;
   return "Request failed";
+}
+
+function formatKnownApiError(message: string, status: number): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("no healthy worker") ||
+    lower.includes("no active worker") ||
+    lower.includes("no worker")
+  ) {
+    return `${message} — register a worker, health-check it, then retry.`;
+  }
+  if (lower.includes("unreachable") || lower.includes("connection")) {
+    return `${message} — verify endpoint_url (localhost vs Docker service name).`;
+  }
+  if (status === 422) return `Validation error: ${message}`;
+  return message;
 }

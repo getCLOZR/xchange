@@ -23,89 +23,170 @@ import httpx
 from clozr_client import ClozrClient, ClozrClientError
 from workflow_utils import search_results_to_text
 
+WORKFLOW_NAME = "research_workflow"
+
 
 def run_workflow(question: str, requester_agent_id: int, client: ClozrClient) -> dict[str, Any]:
     workflow_id = str(uuid.uuid4())
     trace: dict[str, Any] = {
         "workflow_id": workflow_id,
+        "workflow_name": WORKFLOW_NAME,
         "question": question,
         "steps": [],
     }
 
-    client.log_activity(
+    client.log_workflow_event(
         "workflow_started",
-        f"Research workflow {workflow_id} started — question: {question}",
+        workflow_id=workflow_id,
+        workflow_name=WORKFLOW_NAME,
+        message=f"Research workflow started — question: {question}",
         agent_id=requester_agent_id,
+        status="in_progress",
+        question=question,
     )
 
-    # Step 1: delegate search via CLOZR
-    search_dispatch = client.dispatch(
-        requester_agent_id=requester_agent_id,
-        capability="web_search",
-        task_type="search_query",
-        input_payload={"query": question},
-    )
-    trace["steps"].append(
-        {
-            "step": 1,
-            "capability": "web_search",
-            "session_id": search_dispatch["session_id"],
-            "status": search_dispatch["status"],
-            "worker_agent_id": search_dispatch.get("worker_agent_id"),
-        }
-    )
-    if search_dispatch["status"] != "completed":
-        raise ClozrClientError(
-            f"Search step failed: {search_dispatch.get('error_message', 'unknown error')}"
+    try:
+        client.log_workflow_event(
+            "workflow_step_started",
+            workflow_id=workflow_id,
+            workflow_name=WORKFLOW_NAME,
+            message="Step started: web_search",
+            agent_id=requester_agent_id,
+            step_index=1,
+            capability="web_search",
+            task_type="search_query",
+            status="running",
+            question=question,
         )
 
-    output = search_dispatch.get("output_payload") or {}
-    results = output.get("results", [])
-    search_text = search_results_to_text(results)
+        search_dispatch = client.dispatch(
+            requester_agent_id=requester_agent_id,
+            capability="web_search",
+            task_type="search_query",
+            input_payload={"query": question},
+        )
+        trace["steps"].append(
+            {
+                "step": 1,
+                "capability": "web_search",
+                "session_id": search_dispatch["session_id"],
+                "status": search_dispatch["status"],
+                "worker_agent_id": search_dispatch.get("worker_agent_id"),
+            }
+        )
+        if search_dispatch["status"] != "completed":
+            raise ClozrClientError(
+                f"Search step failed: {search_dispatch.get('error_message', 'unknown error')}"
+            )
 
-    # Step 2: delegate summarization via CLOZR
-    summary_dispatch = client.dispatch(
-        requester_agent_id=requester_agent_id,
-        capability="summarization",
-        task_type="summarize_text",
-        input_payload={"text": search_text},
-    )
-    trace["steps"].append(
-        {
-            "step": 2,
-            "capability": "summarization",
-            "session_id": summary_dispatch["session_id"],
-            "status": summary_dispatch["status"],
-            "worker_agent_id": summary_dispatch.get("worker_agent_id"),
-        }
-    )
-    if summary_dispatch["status"] != "completed":
-        raise ClozrClientError(
-            f"Summarization step failed: {summary_dispatch.get('error_message', 'unknown error')}"
+        client.log_workflow_event(
+            "workflow_step_completed",
+            workflow_id=workflow_id,
+            workflow_name=WORKFLOW_NAME,
+            message=f"Step completed: web_search (session {search_dispatch['session_id']})",
+            agent_id=requester_agent_id,
+            step_index=1,
+            capability="web_search",
+            task_type="search_query",
+            session_id=search_dispatch["session_id"],
+            worker_agent_id=search_dispatch.get("worker_agent_id"),
+            status=search_dispatch["status"],
+            question=question,
         )
 
-    summary_output = summary_dispatch.get("output_payload") or {}
-    summary = summary_output.get("summary", str(summary_output))
+        output = search_dispatch.get("output_payload") or {}
+        results = output.get("results", [])
+        search_text = search_results_to_text(results)
 
-    brief = {
-        "question": question,
-        "sources_found": len(results),
-        "search_results": results,
-        "summary": summary,
-        "workflow_status": "completed",
-        "workflow_trace": trace,
-    }
+        client.log_workflow_event(
+            "workflow_step_started",
+            workflow_id=workflow_id,
+            workflow_name=WORKFLOW_NAME,
+            message="Step started: summarization",
+            agent_id=requester_agent_id,
+            step_index=2,
+            capability="summarization",
+            task_type="summarize_text",
+            status="running",
+            question=question,
+        )
 
-    client.log_activity(
-        "workflow_completed",
-        (
-            f"Research workflow {workflow_id} completed — "
-            f"{len(results)} sources, summary length {len(summary)} chars"
-        ),
-        agent_id=requester_agent_id,
-    )
+        summary_dispatch = client.dispatch(
+            requester_agent_id=requester_agent_id,
+            capability="summarization",
+            task_type="summarize_text",
+            input_payload={"text": search_text},
+        )
+        trace["steps"].append(
+            {
+                "step": 2,
+                "capability": "summarization",
+                "session_id": summary_dispatch["session_id"],
+                "status": summary_dispatch["status"],
+                "worker_agent_id": summary_dispatch.get("worker_agent_id"),
+            }
+        )
+        if summary_dispatch["status"] != "completed":
+            raise ClozrClientError(
+                f"Summarization step failed: {summary_dispatch.get('error_message', 'unknown error')}"
+            )
 
-    return brief
+        client.log_workflow_event(
+            "workflow_step_completed",
+            workflow_id=workflow_id,
+            workflow_name=WORKFLOW_NAME,
+            message=(
+                f"Step completed: summarization (session {summary_dispatch['session_id']})"
+            ),
+            agent_id=requester_agent_id,
+            step_index=2,
+            capability="summarization",
+            task_type="summarize_text",
+            session_id=summary_dispatch["session_id"],
+            worker_agent_id=summary_dispatch.get("worker_agent_id"),
+            status=summary_dispatch["status"],
+            question=question,
+        )
+
+        summary_output = summary_dispatch.get("output_payload") or {}
+        summary = summary_output.get("summary", str(summary_output))
+
+        brief = {
+            "question": question,
+            "sources_found": len(results),
+            "search_results": results,
+            "summary": summary,
+            "workflow_status": "completed",
+            "workflow_trace": trace,
+        }
+
+        client.log_workflow_event(
+            "workflow_completed",
+            workflow_id=workflow_id,
+            workflow_name=WORKFLOW_NAME,
+            message=(
+                f"Research workflow completed — {len(results)} sources, "
+                f"summary length {len(summary)} chars"
+            ),
+            agent_id=requester_agent_id,
+            status="completed",
+            question=question,
+        )
+
+        return brief
+
+    except Exception as exc:
+        client.log_workflow_event(
+            "workflow_failed",
+            workflow_id=workflow_id,
+            workflow_name=WORKFLOW_NAME,
+            message=f"Research workflow failed: {exc}",
+            agent_id=requester_agent_id,
+            status="failed",
+            question=question,
+            error_message=str(exc),
+        )
+        raise
 
 
 def _print_brief(brief: dict[str, Any]) -> None:

@@ -13,11 +13,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { searchAgentsByCapability } from "@/lib/api";
+import { getApiErrorMessage, searchAgentsByCapability } from "@/lib/api";
 import type { Agent } from "@/types";
 
 interface CapabilitySearchPanelProps {
-  onAgentsFound: (agents: Agent[]) => void;
+  onAgentsFound?: (agents: Agent[]) => void;
 }
 
 export function CapabilitySearchPanel({
@@ -38,10 +38,10 @@ export function CapabilitySearchPanel({
     try {
       const result = await searchAgentsByCapability(name);
       setAgents(result.agents);
-      onAgentsFound(result.agents);
+      onAgentsFound?.(result.agents);
     } catch (err) {
       setAgents([]);
-      setError(err instanceof Error ? err.message : "Search failed");
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }

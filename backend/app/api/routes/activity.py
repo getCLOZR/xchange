@@ -23,6 +23,7 @@ def create_activity_log(
         event_type=payload.event_type,
         message=payload.message,
         agent_id=payload.agent_id,
+        metadata=payload.metadata,
     )
     db.commit()
     db.refresh(entry)

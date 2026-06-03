@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,12 +11,14 @@ def log_activity(
     event_type: str,
     message: str,
     agent_id: Optional[int] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> ActivityLog:
     """Record an exchange activity event."""
     entry = ActivityLog(
         event_type=event_type,
         message=message,
         agent_id=agent_id,
+        event_metadata=metadata,
     )
     db.add(entry)
     return entry

@@ -13,14 +13,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { usePoll } from "@/hooks/use-poll";
+import {
+  activityCategoryBadgeClass,
+  activityCategoryDotClass,
+  activityCategoryLabel,
+  getActivityEventCategory,
+} from "@/lib/activity-utils";
 import { getActivity, getApiErrorMessage } from "@/lib/api";
-import { isOrchestrationEvent } from "@/lib/session-utils";
 import { cn, formatTimestamp } from "@/lib/utils";
 import type { ActivityLog } from "@/types";
 
 interface ActivityLogPanelProps {
   refreshKey?: number;
 }
+
+const CATEGORY_LEGEND = [
+  "registration",
+  "health",
+  "routing",
+  "dispatch",
+  "workflow",
+  "failure",
+] as const;
 
 export function ActivityLogPanel({ refreshKey = 0 }: ActivityLogPanelProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -50,7 +64,7 @@ export function ActivityLogPanel({ refreshKey = 0 }: ActivityLogPanelProps) {
             Activity log
           </CardTitle>
           <CardDescription>
-            GET /activity — orchestration timeline (auto-refresh 5s)
+            GET /activity — color-coded by event category (5s refresh)
           </CardDescription>
         </div>
         <Button
@@ -67,9 +81,23 @@ export function ActivityLogPanel({ refreshKey = 0 }: ActivityLogPanelProps) {
           />
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+          {CATEGORY_LEGEND.map((cat) => (
+            <span key={cat} className="inline-flex items-center gap-1">
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full border",
+                  activityCategoryDotClass(cat)
+                )}
+              />
+              {activityCategoryLabel(cat)}
+            </span>
+          ))}
+        </div>
+
         {error && (
-          <p className="mb-3 text-xs text-amber-400/90 font-mono">{error}</p>
+          <p className="text-xs text-amber-400/90 font-mono">{error}</p>
         )}
         <div className="overflow-x-auto rounded-md border border-border max-h-80 overflow-y-auto">
           {!loading && logs.length === 0 ? (
@@ -79,7 +107,7 @@ export function ActivityLogPanel({ refreshKey = 0 }: ActivityLogPanelProps) {
           ) : (
             <ul className="relative p-2">
               {logs.map((log, index) => {
-                const orchestration = isOrchestrationEvent(log.event_type);
+                const category = getActivityEventCategory(log.event_type);
                 const isLast = index === logs.length - 1;
                 return (
                   <li
@@ -93,9 +121,7 @@ export function ActivityLogPanel({ refreshKey = 0 }: ActivityLogPanelProps) {
                     <span
                       className={cn(
                         "absolute left-0 top-1.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 bg-background",
-                        orchestration
-                          ? "border-primary bg-primary/20"
-                          : "border-muted-foreground/40"
+                        activityCategoryDotClass(category)
                       )}
                     />
                     <div className="min-w-0 flex-1 space-y-1">
@@ -104,11 +130,17 @@ export function ActivityLogPanel({ refreshKey = 0 }: ActivityLogPanelProps) {
                           {formatTimestamp(log.created_at)}
                         </span>
                         <Badge
-                          variant={orchestration ? "default" : "outline"}
-                          className="font-mono text-[10px]"
+                          variant="outline"
+                          className={cn(
+                            "font-mono text-[10px]",
+                            activityCategoryBadgeClass(category)
+                          )}
                         >
                           {log.event_type}
                         </Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          {activityCategoryLabel(category)}
+                        </span>
                         {log.agent_id != null && (
                           <span className="text-[10px] font-mono text-muted-foreground">
                             agent {log.agent_id}

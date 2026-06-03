@@ -13,6 +13,7 @@ class AgentRegisterRequest(BaseModel):
     owner_name: str = Field(..., min_length=1, max_length=255)
     version: str = Field(..., min_length=1, max_length=50)
     cost_credits: int = Field(default=0, ge=0)
+    is_active: bool = Field(default=True)
     capabilities: list[CapabilityCreate] = Field(..., min_length=1)
 
 

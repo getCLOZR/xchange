@@ -1,7 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
+from typing import Any, Optional
+
 from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -15,6 +18,9 @@ class ActivityLog(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
     agent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    event_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        "metadata", JSONB, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False, index=True

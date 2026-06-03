@@ -11,6 +11,24 @@ export interface Capability {
   output_schema: Record<string, unknown>;
 }
 
+export interface CapabilityCreateInput {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  output_schema: Record<string, unknown>;
+}
+
+export interface AgentRegisterRequest {
+  name: string;
+  description: string;
+  endpoint_url: string;
+  owner_name: string;
+  version: string;
+  cost_credits: number;
+  is_active: boolean;
+  capabilities: CapabilityCreateInput[];
+}
+
 export interface Agent {
   id: number;
   name: string;
@@ -75,7 +93,32 @@ export interface ActivityLog {
   event_type: string;
   message: string;
   agent_id: number | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
+}
+
+export interface WorkflowStepTrace {
+  step_index: number;
+  capability: string;
+  task_type?: string | null;
+  session_id: number | null;
+  worker_agent_id?: number | null;
+  status: string;
+}
+
+export interface WorkflowTrace {
+  workflow_id: string;
+  workflow_name: string;
+  status: string;
+  started_at: string;
+  completed_at?: string | null;
+  steps: WorkflowStepTrace[];
+  question?: string | null;
+}
+
+export interface WorkflowListResponse {
+  workflows: WorkflowTrace[];
+  count: number;
 }
 
 export interface ActivityListResponse {

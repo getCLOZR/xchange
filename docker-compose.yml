@@ -95,5 +95,18 @@ services:
       - ./demo_agents:/app/demo_agents
       - ./external_agents:/app/external_agents
 
+  photo-processing-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-photo-processing-agent
+    ports:
+      - "9205:9205"
+    command: uvicorn external_agents.photo_processing_agent.main:app --host 0.0.0.0 --port 9205 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
 volumes:
   postgres_data:

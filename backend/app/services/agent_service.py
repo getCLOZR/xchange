@@ -24,7 +24,7 @@ def register_agent(db: Session, payload: AgentRegisterRequest) -> Agent:
         owner_name=payload.owner_name,
         version=payload.version,
         cost_credits=payload.cost_credits,
-        is_active=True,
+        is_active=payload.is_active,
         is_healthy=False,
     )
     db.add(agent)

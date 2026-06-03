@@ -15,37 +15,53 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { dispatchSessionTask, getApiErrorMessage } from "@/lib/api";
+import {
+  DEFAULT_DISPATCH_PAYLOAD,
+  DISPATCH_PRESETS,
+} from "@/lib/developer-presets";
+import { dispatchTask, getApiErrorMessage } from "@/lib/api";
+import { parseJsonField } from "@/lib/json-utils";
 import { sessionStatusBadgeVariant } from "@/lib/session-utils";
 import type { DispatchResponse } from "@/types";
 
-const DEFAULT_PAYLOAD = `{
-  "text": "CLOZR Exchange is a domain-agnostic orchestration layer for AI agents."
-}`;
-
 interface RunTaskDemoPanelProps {
   onDispatchComplete?: () => void;
+  defaultRequesterId?: string;
 }
 
-export function RunTaskDemoPanel({ onDispatchComplete }: RunTaskDemoPanelProps) {
-  const [requesterAgentId, setRequesterAgentId] = useState("1");
+export function RunTaskDemoPanel({
+  onDispatchComplete,
+  defaultRequesterId = "1",
+}: RunTaskDemoPanelProps) {
+  const [requesterAgentId, setRequesterAgentId] = useState(defaultRequesterId);
   const [capability, setCapability] = useState("summarization");
   const [taskType, setTaskType] = useState("summarize_text");
-  const [payload, setPayload] = useState(DEFAULT_PAYLOAD);
+  const [payload, setPayload] = useState(DEFAULT_DISPATCH_PAYLOAD);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<DispatchResponse | null>(null);
+
+  function applyPreset(presetId: string) {
+    const preset = DISPATCH_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    setCapability(preset.capability);
+    setTaskType(preset.task_type);
+    setPayload(JSON.stringify(preset.input_payload, null, 2));
+    setError(null);
+    setLastResult(null);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLastResult(null);
 
-    let input_payload: Record<string, unknown>;
-    try {
-      input_payload = JSON.parse(payload) as Record<string, unknown>;
-    } catch {
-      setError("Invalid JSON in input_payload");
+    const parsed = parseJsonField<Record<string, unknown>>(
+      payload,
+      "input_payload"
+    );
+    if (!parsed.ok) {
+      setError(parsed.error);
       return;
     }
 
@@ -54,14 +70,22 @@ export function RunTaskDemoPanel({ onDispatchComplete }: RunTaskDemoPanelProps) 
       setError("requester_agent_id must be a positive number");
       return;
     }
+    if (!capability.trim()) {
+      setError("capability is required");
+      return;
+    }
+    if (!taskType.trim()) {
+      setError("task_type is required");
+      return;
+    }
 
     setRunning(true);
     try {
-      const result = await dispatchSessionTask({
+      const result = await dispatchTask({
         requester_agent_id: requesterId,
         capability: capability.trim(),
         task_type: taskType.trim(),
-        input_payload,
+        input_payload: parsed.value,
       });
       setLastResult(result);
       onDispatchComplete?.();
@@ -80,10 +104,27 @@ export function RunTaskDemoPanel({ onDispatchComplete }: RunTaskDemoPanelProps) 
           Dispatch task
         </CardTitle>
         <CardDescription>
-          POST /sessions/dispatch — live orchestration through the exchange
+          POST /sessions/dispatch — synchronous orchestration test
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Quick presets</p>
+          <div className="flex flex-wrap gap-1.5">
+            {DISPATCH_PRESETS.map((preset) => (
+              <Button
+                key={preset.id}
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyPreset(preset.id)}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -118,6 +159,7 @@ export function RunTaskDemoPanel({ onDispatchComplete }: RunTaskDemoPanelProps) 
               value={payload}
               onChange={(e) => setPayload(e.target.value)}
               rows={5}
+              className="font-mono text-[11px]"
             />
           </div>
           <Button type="submit" disabled={running}>
@@ -150,11 +192,18 @@ export function RunTaskDemoPanel({ onDispatchComplete }: RunTaskDemoPanelProps) 
               )}
             </div>
             {lastResult.error_message && (
-              <p className="text-xs text-amber-400/90">{lastResult.error_message}</p>
+              <p className="text-xs text-amber-400/90">
+                {lastResult.error_message}
+              </p>
             )}
             {lastResult.output_payload && (
               <pre className="text-[11px] font-mono overflow-x-auto max-h-28 rounded border border-border bg-background p-2">
                 {JSON.stringify(lastResult.output_payload, null, 2)}
+              </pre>
+            )}
+            {lastResult.routing_trace && (
+              <pre className="text-[10px] font-mono overflow-x-auto max-h-24 rounded border border-border bg-background p-2 text-muted-foreground">
+                {JSON.stringify(lastResult.routing_trace, null, 2)}
               </pre>
             )}
           </div>

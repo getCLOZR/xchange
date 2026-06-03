@@ -3,62 +3,78 @@
 import { useCallback, useState } from "react";
 
 import { ActivityLogPanel } from "@/components/dashboard/activity-log-panel";
-import { ArchitectureNotes } from "@/components/dashboard/architecture-notes";
 import { CapabilitySearchPanel } from "@/components/dashboard/capability-search-panel";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { HealthStatusPanel } from "@/components/dashboard/health-status-panel";
+import { RegisterAgentPanel } from "@/components/dashboard/register-agent-panel";
 import { RegisteredAgentsPanel } from "@/components/dashboard/registered-agents-panel";
 import { RoutingPanel } from "@/components/dashboard/routing-panel";
 import { RunTaskDemoPanel } from "@/components/dashboard/run-task-demo-panel";
 import { SessionsPanel } from "@/components/dashboard/sessions-panel";
+import { WorkflowActivityPanel } from "@/components/dashboard/workflow-activity-panel";
 import type { Agent } from "@/types";
 
 export function Dashboard() {
-  const [discoveredAgents, setDiscoveredAgents] = useState<Agent[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [highlightSessionId, setHighlightSessionId] = useState<number | null>(
+    null
+  );
+  const [lastRegisteredId, setLastRegisteredId] = useState<string>("1");
 
-  const handleAgentsFound = useCallback((agents: Agent[]) => {
-    setDiscoveredAgents((prev) => {
-      const byId = new Map(prev.map((a) => [a.id, a]));
-      for (const agent of agents) {
-        byId.set(agent.id, agent);
-      }
-      return Array.from(byId.values());
-    });
-  }, []);
-
-  const handleDispatchComplete = useCallback(() => {
+  const bumpRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
+
+  const handleAgentRegistered = useCallback((agent: Agent) => {
+    setLastRegisteredId(String(agent.id));
+    bumpRefresh();
+  }, [bumpRefresh]);
 
   return (
     <DashboardShell>
       <div className="space-y-6">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">
-            Exchange control panel
+            CLOZR developer console
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Visualize agents, capability routing, orchestration flow, and
-            infrastructure logs.
+            Register agents, run health checks, preview routing, dispatch tasks,
+            and inspect sessions — without curl.
           </p>
         </div>
 
         <HealthStatusPanel />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <RegisteredAgentsPanel discoveredAgents={discoveredAgents} />
-          <CapabilitySearchPanel onAgentsFound={handleAgentsFound} />
+          <RegisterAgentPanel onRegistered={handleAgentRegistered} />
+          <RegisteredAgentsPanel
+            refreshKey={refreshKey}
+            onHealthCheck={bumpRefresh}
+          />
         </div>
 
         <RoutingPanel />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <RunTaskDemoPanel onDispatchComplete={handleDispatchComplete} />
-          <ArchitectureNotes />
+          <RunTaskDemoPanel
+            defaultRequesterId={lastRegisteredId}
+            onDispatchComplete={bumpRefresh}
+          />
+          <CapabilitySearchPanel />
         </div>
 
-        <SessionsPanel refreshKey={refreshKey} />
+        <WorkflowActivityPanel
+          refreshKey={refreshKey}
+          onSelectSession={(sessionId) => {
+            setHighlightSessionId(sessionId);
+            bumpRefresh();
+          }}
+        />
+
+        <SessionsPanel
+          refreshKey={refreshKey}
+          highlightSessionId={highlightSessionId}
+        />
 
         <ActivityLogPanel refreshKey={refreshKey} />
       </div>
