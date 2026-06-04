@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Layers, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, Layers, RefreshCw } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { CollapsibleBlock } from "@/components/dashboard/collapsible-block";
+import { RoutingExplanationModal } from "@/components/dashboard/routing-explanation-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +15,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { usePoll } from "@/hooks/use-poll";
-import { getApiErrorMessage, getSession, getSessions } from "@/lib/api";
+import {
+  getApiErrorMessage,
+  getSession,
+  getSessionRouting,
+  getSessions,
+} from "@/lib/api";
 import { sessionStatusBadgeVariant } from "@/lib/session-utils";
 import { cn, formatTimestamp } from "@/lib/utils";
-import type { RoutingCandidateScore, RoutingTrace, Session } from "@/types";
+import type { RoutingExplanation, RoutingTrace, Session } from "@/types";
 
 interface SessionsPanelProps {
   refreshKey?: number;
@@ -34,7 +40,33 @@ export function SessionsPanel({
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Session | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [routingModal, setRoutingModal] = useState<{
+    sessionId: number;
+    explanation: RoutingExplanation | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
   const highlightRef = useRef<HTMLTableRowElement | null>(null);
+
+  async function openRouting(sessionId: number) {
+    setRoutingModal({ sessionId, explanation: null, loading: true, error: null });
+    try {
+      const explanation = await getSessionRouting(sessionId);
+      setRoutingModal({
+        sessionId,
+        explanation,
+        loading: false,
+        error: null,
+      });
+    } catch (e) {
+      setRoutingModal({
+        sessionId,
+        explanation: null,
+        loading: false,
+        error: getApiErrorMessage(e),
+      });
+    }
+  }
 
   const fetchSessions = useCallback(async () => {
     setError(null);
@@ -125,13 +157,14 @@ export function SessionsPanel({
                 <th className="p-2 font-medium">Worker</th>
                 <th className="p-2 font-medium">Status</th>
                 <th className="p-2 font-medium">Created</th>
+                <th className="p-2 font-medium w-24">Routing</th>
               </tr>
             </thead>
             <tbody>
               {!loading && sessions.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="p-6 text-center text-muted-foreground"
                   >
                     No orchestration sessions yet. Dispatch a task to create one.
@@ -180,10 +213,22 @@ export function SessionsPanel({
                       <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">
                         {formatTimestamp(session.created_at)}
                       </td>
+                      <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => void openRouting(session.id)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                      </td>
                     </tr>
                     {isOpen && (
                       <tr className="border-b border-border bg-muted/10">
-                        <td colSpan={8} className="p-4">
+                        <td colSpan={9} className="p-4">
                           <SessionDetailView
                             session={
                               detail?.id === session.id ? detail : session
@@ -200,6 +245,35 @@ export function SessionsPanel({
           </table>
         </div>
       </CardContent>
+
+      {routingModal && !routingModal.loading && routingModal.explanation && (
+        <RoutingExplanationModal
+          title={`Routing — session ${routingModal.sessionId}`}
+          explanation={routingModal.explanation}
+          onClose={() => setRoutingModal(null)}
+        />
+      )}
+      {routingModal?.loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 text-sm text-muted-foreground">
+          Loading routing for session {routingModal.sessionId}…
+        </div>
+      )}
+      {routingModal?.error && !routingModal.loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80">
+          <div className="rounded-lg border border-border bg-card p-4 max-w-md">
+            <p className="text-sm text-amber-400/90 font-mono">{routingModal.error}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => setRoutingModal(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -269,7 +343,7 @@ function SessionDetailView({
 
 function RoutingTraceDetail({ trace }: { trace: RoutingTrace }) {
   const attempts = trace.attempts ?? [];
-  const candidates = (trace.candidates ?? []) as unknown as RoutingCandidateScore[];
+  const candidates = (trace.candidates ?? []) as Array<Record<string, unknown>>;
 
   return (
     <CollapsibleBlock title="routing_trace" defaultOpen>
@@ -305,15 +379,18 @@ function RoutingTraceDetail({ trace }: { trace: RoutingTrace }) {
                   key={`${c.agent_id ?? i}-${i}`}
                   className="rounded border border-border px-2 py-1"
                 >
-                  #{c.agent_id} {c.name ?? ""} — score{" "}
-                  {c.score != null ? c.score.toFixed(3) : "—"}
-                  {c.score_breakdown && (
+                  #{String(c.agent_id)} {String(c.name ?? c.agent_name ?? "")} — score{" "}
+                  {typeof c.score === "number" ? c.score.toFixed(3) : "—"}
+                  {typeof c.score_breakdown === "object" &&
+                  c.score_breakdown !== null ? (
                     <span className="block text-muted-foreground text-[10px]">
-                      {Object.entries(c.score_breakdown)
+                      {Object.entries(
+                        c.score_breakdown as Record<string, unknown>
+                      )
                         .map(([k, v]) => `${k}: ${v}`)
                         .join(", ")}
                     </span>
-                  )}
+                  ) : null}
                 </li>
               ))}
             </ul>

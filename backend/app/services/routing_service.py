@@ -42,18 +42,23 @@ def preview_routing(
     requester_agent_id: Optional[int] = None,
 ) -> RoutingPreviewResponse:
     """Return ranked candidates and selected worker preview (no session)."""
-    selection = select_ranked_workers(
+    from app.services.routing_explanation_service import build_routing_explanation
+
+    explanation = build_routing_explanation(
         db, capability=capability, requester_agent_id=requester_agent_id
     )
-    trace_dict = selection.trace.to_dict()
-    candidates = [_ranked_to_candidate_score(r) for r in selection.ranked]
     return RoutingPreviewResponse(
-        capability=capability,
-        filters=list(selection.trace.filters),
-        candidates=candidates,
-        selected_agent_id=selection.selected.agent.id if selection.selected else None,
-        selection_reason=selection.trace.selection_reason or _no_selection_reason(selection),
-        routing_trace=trace_dict,
+        capability=explanation.capability,
+        filters_applied=explanation.filters_applied,
+        candidate_count=explanation.candidate_count,
+        candidates=explanation.candidates,
+        selected_worker=explanation.selected_worker,
+        selection_reason=explanation.selection_reason,
+        filters=explanation.filters,
+        selected_agent_id=explanation.selected_agent_id,
+        routing_trace=explanation.routing_trace,
+        # Legacy ranked list shape for older clients
+        legacy_candidates=_legacy_candidates(explanation.candidates),
     )
 
 
@@ -64,13 +69,33 @@ def select_ranked_workers(
 ) -> RoutingSelection:
     """Find, score, rank, and select the best healthy active worker."""
     raw_workers = search_agents_by_capability(db, capability)
-    candidates = _filter_candidates(raw_workers, requester_agent_id)
-    ranked = _rank_workers(candidates)
+    filters_applied = _filters_applied(requester_agent_id)
+
+    eligible_agents: list[Agent] = []
+    excluded: list[tuple[Agent, list[str]]] = []
+
+    for agent in raw_workers:
+        reasons = _exclusion_reasons(agent, requester_agent_id)
+        if reasons:
+            excluded.append((agent, reasons))
+        else:
+            eligible_agents.append(agent)
+
+    ranked = _rank_workers(eligible_agents)
+
+    from app.services.routing_explanation_service import (
+        _eligible_trace_entry,
+        _excluded_trace_entry,
+    )
 
     trace = RoutingTrace(
         capability=capability,
-        filters=list(DEFAULT_FILTERS),
-        candidates=[_candidate_trace_entry(r) for r in ranked],
+        filters=filters_applied,
+        candidates=[_eligible_trace_entry(r) for r in ranked],
+        excluded_candidates=[
+            _excluded_trace_entry(agent, reasons) for agent, reasons in excluded
+        ],
+        candidate_count=len(ranked) + len(excluded),
     )
 
     if not ranked:
@@ -117,16 +142,24 @@ def calculate_routing_score(
     return round(final, 4), success_rate, breakdown
 
 
-def _filter_candidates(
-    workers: list[Agent], requester_agent_id: Optional[int]
-) -> list[Agent]:
-    return [
-        agent
-        for agent in workers
-        if agent.is_active
-        and agent.is_healthy
-        and (requester_agent_id is None or agent.id != requester_agent_id)
-    ]
+def _exclusion_reasons(
+    agent: Agent, requester_agent_id: Optional[int]
+) -> list[str]:
+    reasons: list[str] = []
+    if not agent.is_active:
+        reasons.append("inactive")
+    if not agent.is_healthy:
+        reasons.append("unhealthy")
+    if requester_agent_id is not None and agent.id == requester_agent_id:
+        reasons.append("exclude_requester")
+    return reasons
+
+
+def _filters_applied(requester_agent_id: Optional[int]) -> list[str]:
+    filters = ["active=true", "is_healthy=true"]
+    if requester_agent_id is not None:
+        filters.append("exclude_requester")
+    return filters
 
 
 def _rank_workers(candidates: list[Agent]) -> list[RankedWorker]:
@@ -217,18 +250,25 @@ def _ranked_to_candidate_score(ranked: RankedWorker) -> RoutingCandidateScore:
     )
 
 
-def _candidate_trace_entry(ranked: RankedWorker) -> dict[str, Any]:
-    agent = ranked.agent
-    return {
-        "agent_id": agent.id,
-        "name": agent.name,
-        "success_rate": round(ranked.success_rate, 4),
-        "avg_response_time_ms": agent.avg_response_time_ms,
-        "cost_credits": agent.cost_credits,
-        "is_healthy": agent.is_healthy,
-        "score": ranked.score,
-        "score_breakdown": ranked.score_breakdown,
-    }
+def _legacy_candidates(candidates: list) -> list[RoutingCandidateScore]:
+    """Map explained candidates to legacy preview candidate shape."""
+    legacy: list[RoutingCandidateScore] = []
+    for c in candidates:
+        if not c.eligible or c.score is None:
+            continue
+        legacy.append(
+            RoutingCandidateScore(
+                agent_id=c.agent_id,
+                name=c.agent_name,
+                success_rate=c.success_rate,
+                avg_response_time_ms=c.avg_response_time_ms,
+                cost_credits=c.cost_credits,
+                is_healthy=c.is_healthy,
+                score=c.score,
+                score_breakdown=c.score_breakdown or {},
+            )
+        )
+    return legacy
 
 
 def _no_selection_reason(selection: RoutingSelection) -> str:

@@ -139,13 +139,55 @@ export interface RoutingCandidateScore {
   score_breakdown: Record<string, number>;
 }
 
-export interface RoutingPreviewResponse {
+export interface RoutingWorkerRef {
+  agent_id: number;
+  agent_name: string;
+}
+
+export interface RoutingExplainedCandidate {
+  agent_id: number;
+  agent_name: string;
+  is_active: boolean;
+  is_healthy: boolean;
+  success_rate: number;
+  avg_response_time_ms: number | null;
+  cost_credits: number;
+  score: number | null;
+  score_breakdown: Record<string, number> | null;
+  eligible: boolean;
+  rank: number | null;
+  exclusion_reasons: string[];
+  exclusion_message: string | null;
+}
+
+export interface RoutingExplanation {
   capability: string;
-  filters: string[];
-  candidates: RoutingCandidateScore[];
-  selected_agent_id: number | null;
+  filters_applied: string[];
+  candidate_count: number;
+  candidates: RoutingExplainedCandidate[];
+  selected_worker: RoutingWorkerRef | null;
   selection_reason: string;
+  filters: string[];
+  selected_agent_id: number | null;
   routing_trace: Record<string, unknown>;
+  session_id?: number;
+  dispatch_attempts?: Array<{
+    agent_id: number;
+    name?: string;
+    score?: number;
+    outcome: string;
+    error?: string;
+    response_time_ms?: number;
+  }>;
+}
+
+export interface RoutingPreviewResponse extends RoutingExplanation {
+  legacy_candidates?: RoutingCandidateScore[];
+}
+
+export interface SessionRoutingResponse extends RoutingExplanation {
+  session_id: number;
+  dispatch_attempts: RoutingExplanation["dispatch_attempts"];
 }
 
 export interface RoutingAttempt {
@@ -204,4 +246,48 @@ export interface DispatchResponse {
   output_payload: Record<string, unknown> | null;
   error_message: string | null;
   routing_trace?: RoutingTrace | Record<string, unknown> | null;
+}
+
+export interface EndpointValidationResponse {
+  valid: boolean;
+  agent_name: string | null;
+  version: string | null;
+  response_time_ms: number | null;
+  error: string | null;
+}
+
+export interface ContractValidationResponse {
+  valid: boolean;
+  execute_endpoint: boolean;
+  response_contract: boolean;
+  error_handling_valid: boolean;
+  error: string | null;
+  response_status: string | null;
+}
+
+export interface CapabilityProvider {
+  agent_id: number;
+  agent_name: string;
+  endpoint_url: string;
+  is_active: boolean;
+  is_healthy: boolean;
+  cost_credits: number;
+  avg_response_time_ms: number | null;
+  total_sessions: number;
+  successful_sessions: number;
+  failed_sessions: number;
+  success_rate: number;
+  input_schema: Record<string, unknown>;
+  output_schema: Record<string, unknown>;
+}
+
+export interface CapabilityGroup {
+  name: string;
+  provider_count: number;
+  healthy_provider_count: number;
+  providers: CapabilityProvider[];
+}
+
+export interface CapabilityRegistryResponse {
+  capabilities: CapabilityGroup[];
 }

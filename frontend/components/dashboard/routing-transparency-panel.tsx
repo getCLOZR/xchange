@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, Search } from "lucide-react";
+import { Eye, Search } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { RoutingExplanationView } from "@/components/dashboard/routing-explanation-view";
@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { getApiErrorMessage, getRoutingPreview } from "@/lib/api";
 import type { RoutingExplanation } from "@/types";
 
-export function RoutingPanel() {
+export function RoutingTransparencyPanel() {
   const [capability, setCapability] = useState("summarization");
   const [requesterId, setRequesterId] = useState("");
   const [explanation, setExplanation] = useState<RoutingExplanation | null>(null);
@@ -26,7 +26,7 @@ export function RoutingPanel() {
 
   const runPreview = useCallback(async () => {
     if (!capability.trim()) {
-      setError("capability is required");
+      setError("Capability is required");
       return;
     }
     setLoading(true);
@@ -48,11 +48,12 @@ export function RoutingPanel() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <GitBranch className="h-4 w-4 text-muted-foreground" />
-          Routing preview
+          <Eye className="h-4 w-4 text-muted-foreground" />
+          Routing transparency
         </CardTitle>
         <CardDescription>
-          GET /routing/preview — ranked workers before dispatch
+          Explain how CLOZR ranks workers — filters, exclusions, scores, and
+          selection reason (no behavior changes)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -64,9 +65,9 @@ export function RoutingPanel() {
           }}
         >
           <div className="flex-1 min-w-[160px] space-y-1.5">
-            <Label htmlFor="routing-cap">capability</Label>
+            <Label htmlFor="transparency-cap">Capability</Label>
             <Input
-              id="routing-cap"
+              id="transparency-cap"
               value={capability}
               onChange={(e) => setCapability(e.target.value)}
               placeholder="summarization"
@@ -74,28 +75,38 @@ export function RoutingPanel() {
             />
           </div>
           <div className="w-36 space-y-1.5">
-            <Label htmlFor="routing-req">requester id (optional)</Label>
+            <Label htmlFor="transparency-req">Exclude requester id</Label>
             <Input
-              id="routing-req"
+              id="transparency-req"
               value={requesterId}
               onChange={(e) => setRequesterId(e.target.value)}
-              placeholder="exclude"
+              placeholder="optional"
               className="font-mono text-sm"
             />
           </div>
           <Button type="submit" disabled={loading} size="sm">
             <Search className="h-3.5 w-3.5 mr-1" />
-            {loading ? "Loading…" : "Preview routing"}
+            {loading ? "Loading…" : "Explain routing"}
           </Button>
         </form>
 
-        {error && (
+        {error ? (
           <p className="text-xs text-amber-400/90 font-mono rounded border border-amber-500/30 bg-amber-500/5 p-2">
             {error}
           </p>
-        )}
+        ) : null}
 
-        {explanation && <RoutingExplanationView explanation={explanation} />}
+        {explanation ? (
+          <RoutingExplanationView explanation={explanation} />
+        ) : (
+          !loading &&
+          !error && (
+            <p className="text-sm text-muted-foreground">
+              Enter a capability and run Explain routing to see candidates,
+              filters, and selection reasoning.
+            </p>
+          )
+        )}
       </CardContent>
     </Card>
   );

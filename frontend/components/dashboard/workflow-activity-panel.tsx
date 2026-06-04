@@ -4,10 +4,13 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Eye,
   GitBranch,
   RefreshCw,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+
+import { RoutingExplanationModal } from "@/components/dashboard/routing-explanation-view";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,10 +22,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { usePoll } from "@/hooks/use-poll";
-import { getApiErrorMessage, getRecentWorkflows } from "@/lib/api";
+import { getApiErrorMessage, getRecentWorkflows, getSessionRouting } from "@/lib/api";
 import { workflowStatusBadgeVariant } from "@/lib/session-utils";
 import { cn, formatTimestamp } from "@/lib/utils";
-import type { WorkflowTrace } from "@/types";
+import type { RoutingExplanation, WorkflowTrace } from "@/types";
 import { CopyButton } from "@/components/dashboard/copy-button";
 
 interface WorkflowActivityPanelProps {
@@ -45,6 +48,27 @@ export function WorkflowActivityPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [routingModal, setRoutingModal] = useState<{
+    sessionId: number;
+    explanation: RoutingExplanation | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
+
+  async function openStepRouting(sessionId: number) {
+    setRoutingModal({ sessionId, explanation: null, loading: true, error: null });
+    try {
+      const explanation = await getSessionRouting(sessionId);
+      setRoutingModal({ sessionId, explanation, loading: false, error: null });
+    } catch (e) {
+      setRoutingModal({
+        sessionId,
+        explanation: null,
+        loading: false,
+        error: getApiErrorMessage(e),
+      });
+    }
+  }
 
   const fetchWorkflows = useCallback(async () => {
     setError(null);
@@ -210,8 +234,20 @@ export function WorkflowActivityPanel({
                               </Badge>
                               {step.worker_agent_id != null && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  worker {step.worker_agent_id}
+                                  Worker selected: agent {step.worker_agent_id}
                                 </p>
+                              )}
+                              {step.session_id != null && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2 h-7 text-xs"
+                                  onClick={() => void openStepRouting(step.session_id!)}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Routing detail
+                                </Button>
                               )}
                             </div>
                           </li>
@@ -225,6 +261,35 @@ export function WorkflowActivityPanel({
           </div>
         )}
       </CardContent>
+
+      {routingModal && !routingModal.loading && routingModal.explanation && (
+        <RoutingExplanationModal
+          title={`Workflow step routing — session ${routingModal.sessionId}`}
+          explanation={routingModal.explanation}
+          onClose={() => setRoutingModal(null)}
+        />
+      )}
+      {routingModal?.loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 text-sm text-muted-foreground">
+          Loading routing…
+        </div>
+      )}
+      {routingModal?.error && !routingModal.loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80">
+          <div className="rounded-lg border border-border bg-card p-4 max-w-md">
+            <p className="text-sm text-amber-400/90 font-mono">{routingModal.error}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => setRoutingModal(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

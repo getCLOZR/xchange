@@ -2,6 +2,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.routing_explanation import (
+    RoutingExplainedCandidate,
+    RoutingWorkerRef,
+)
+
 
 class RoutingCandidateScore(BaseModel):
     agent_id: int
@@ -16,11 +21,15 @@ class RoutingCandidateScore(BaseModel):
 
 class RoutingPreviewResponse(BaseModel):
     capability: str
-    filters: list[str]
-    candidates: list[RoutingCandidateScore]
+    filters_applied: list[str] = Field(default_factory=list)
+    candidate_count: int = 0
+    candidates: list[RoutingExplainedCandidate] = Field(default_factory=list)
+    selected_worker: Optional[RoutingWorkerRef] = None
+    selection_reason: str = ""
+    filters: list[str] = Field(default_factory=list)
     selected_agent_id: Optional[int] = None
-    selection_reason: str
-    routing_trace: dict[str, Any]
+    routing_trace: dict[str, Any] = Field(default_factory=dict)
+    legacy_candidates: list[RoutingCandidateScore] = Field(default_factory=list)
 
 
 class RoutingTrace(BaseModel):
@@ -29,6 +38,8 @@ class RoutingTrace(BaseModel):
     capability: str
     filters: list[str] = Field(default_factory=list)
     candidates: list[dict[str, Any]] = Field(default_factory=list)
+    excluded_candidates: list[dict[str, Any]] = Field(default_factory=list)
+    candidate_count: int = 0
     selected_agent_id: Optional[int] = None
     selection_reason: Optional[str] = None
     attempts: list[dict[str, Any]] = Field(default_factory=list)

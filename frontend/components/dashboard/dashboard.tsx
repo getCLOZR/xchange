@@ -3,12 +3,14 @@
 import { useCallback, useState } from "react";
 
 import { ActivityLogPanel } from "@/components/dashboard/activity-log-panel";
+import { CapabilityRegistryPanel } from "@/components/dashboard/capability-registry-panel";
 import { CapabilitySearchPanel } from "@/components/dashboard/capability-search-panel";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { HealthStatusPanel } from "@/components/dashboard/health-status-panel";
 import { RegisterAgentPanel } from "@/components/dashboard/register-agent-panel";
 import { RegisteredAgentsPanel } from "@/components/dashboard/registered-agents-panel";
 import { RoutingPanel } from "@/components/dashboard/routing-panel";
+import { RoutingTransparencyPanel } from "@/components/dashboard/routing-transparency-panel";
 import { RunTaskDemoPanel } from "@/components/dashboard/run-task-demo-panel";
 import { SessionsPanel } from "@/components/dashboard/sessions-panel";
 import { WorkflowActivityPanel } from "@/components/dashboard/workflow-activity-panel";
@@ -45,6 +47,8 @@ export function Dashboard() {
 
         <HealthStatusPanel />
 
+        <CapabilityRegistryPanel refreshKey={refreshKey} />
+
         <div className="grid gap-6 lg:grid-cols-2">
           <RegisterAgentPanel onRegistered={handleAgentRegistered} />
           <RegisteredAgentsPanel
@@ -52,6 +56,8 @@ export function Dashboard() {
             onHealthCheck={bumpRefresh}
           />
         </div>
+
+        <RoutingTransparencyPanel />
 
         <RoutingPanel />
 

@@ -4,12 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.schemas.routing_explanation import SessionRoutingResponse
 from app.schemas.session import (
     DispatchRequest,
     DispatchResponse,
     SessionListResponse,
     SessionRead,
 )
+from app.services.routing_explanation_service import get_session_routing_explanation
 from app.services import session_service
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -37,6 +39,18 @@ def list_sessions(
         sessions=[SessionRead.model_validate(s) for s in sessions],
         count=len(sessions),
     )
+
+
+@router.get("/{session_id}/routing", response_model=SessionRoutingResponse)
+def get_session_routing(
+    session_id: int,
+    db: Session = Depends(get_db),
+):
+    """Return routing explanation recorded for a session."""
+    session = session_service.get_session_by_id(db, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    return get_session_routing_explanation(db, session)
 
 
 @router.get("/{session_id}", response_model=SessionRead)

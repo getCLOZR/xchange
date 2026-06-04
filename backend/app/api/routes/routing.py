@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.routing import RoutingPreviewResponse
+from app.schemas.routing import RoutingPreviewResponse  # noqa: F401 — response_model
 from app.services.routing_service import preview_routing
 
 router = APIRouter(prefix="/routing", tags=["routing"])

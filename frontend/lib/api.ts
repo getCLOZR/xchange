@@ -7,11 +7,16 @@ import type {
   AgentRegisterRequest,
   AgentSearchResponse,
   BulkHealthCheckResponse,
+  CapabilityGroup,
+  CapabilityRegistryResponse,
+  ContractValidationResponse,
   DispatchRequest,
   DispatchResponse,
+  EndpointValidationResponse,
   HealthResponse,
   HealthCheckResponse,
   RoutingPreviewResponse,
+  SessionRoutingResponse,
   Session,
   SessionListResponse,
   WorkflowListResponse,
@@ -41,6 +46,18 @@ export async function searchAgentsByCapability(
   return data;
 }
 
+export async function getCapabilities(): Promise<CapabilityRegistryResponse> {
+  const { data } = await api.get<CapabilityRegistryResponse>("/capabilities/");
+  return data;
+}
+
+export async function getCapability(name: string): Promise<CapabilityGroup> {
+  const { data } = await api.get<CapabilityGroup>(
+    `/capabilities/${encodeURIComponent(name)}`
+  );
+  return data;
+}
+
 export async function getAgents(params?: {
   active?: boolean;
   healthy?: boolean;
@@ -54,6 +71,28 @@ export async function registerAgent(
   payload: AgentRegisterRequest
 ): Promise<Agent> {
   const { data } = await api.post<Agent>("/agents/register", payload);
+  return data;
+}
+
+export async function validateEndpoint(
+  endpointUrl: string
+): Promise<EndpointValidationResponse> {
+  const { data } = await api.post<EndpointValidationResponse>(
+    "/validation/endpoint",
+    { endpoint_url: endpointUrl },
+    { timeout: 15_000 }
+  );
+  return data;
+}
+
+export async function validateContract(
+  endpointUrl: string
+): Promise<ContractValidationResponse> {
+  const { data } = await api.post<ContractValidationResponse>(
+    "/validation/contract",
+    { endpoint_url: endpointUrl },
+    { timeout: 15_000 }
+  );
   return data;
 }
 
@@ -104,6 +143,15 @@ export async function getSessions(params?: {
 
 export async function getSession(sessionId: number): Promise<Session> {
   const { data } = await api.get<Session>(`/sessions/${sessionId}`);
+  return data;
+}
+
+export async function getSessionRouting(
+  sessionId: number
+): Promise<SessionRoutingResponse> {
+  const { data } = await api.get<SessionRoutingResponse>(
+    `/sessions/${sessionId}/routing`
+  );
   return data;
 }
 

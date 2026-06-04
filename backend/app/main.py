@@ -1,7 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import activity, agents, health, routing, sessions, workflows
+from app.api.routes import (
+    activity,
+    agents,
+    capabilities,
+    health,
+    routing,
+    sessions,
+    validation,
+    workflows,
+)
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 
@@ -24,7 +33,9 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(agents.router)
+app.include_router(capabilities.router)
 app.include_router(activity.router)
 app.include_router(routing.router)
 app.include_router(workflows.router)
 app.include_router(sessions.router)
+app.include_router(validation.router)

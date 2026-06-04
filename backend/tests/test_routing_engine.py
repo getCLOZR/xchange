@@ -78,8 +78,7 @@ def test_routing_preview_returns_ranked_candidates(client, monkeypatch):
         _agent(3, cost=1, avg_ms=20.0, successful=9, total=10),
     ]
     monkeypatch.setattr(
-        routing_service,
-        "search_agents_by_capability",
+        "app.services.routing_explanation_service.search_agents_by_capability",
         lambda db, capability_name: workers,
     )
 
@@ -90,9 +89,10 @@ def test_routing_preview_returns_ranked_candidates(client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["capability"] == "summarization"
-    assert len(body["candidates"]) == 2
-    assert body["candidates"][0]["score"] >= body["candidates"][1]["score"]
-    assert body["selected_agent_id"] == body["candidates"][0]["agent_id"]
+    eligible = [c for c in body["candidates"] if c.get("eligible", True)]
+    assert len(eligible) == 2
+    assert eligible[0]["score"] >= eligible[1]["score"]
+    assert body["selected_agent_id"] == eligible[0]["agent_id"]
 
 
 def test_dispatch_selects_highest_scoring_healthy_worker():
@@ -261,8 +261,7 @@ def test_dispatch_fails_when_all_candidates_fail(monkeypatch):
 def test_routing_preview_endpoint(client, monkeypatch):
     workers = [_agent(2, healthy=True), _agent(3, healthy=True, cost=0)]
     monkeypatch.setattr(
-        routing_service,
-        "search_agents_by_capability",
+        "app.services.routing_explanation_service.search_agents_by_capability",
         lambda db, capability_name: workers,
     )
 
