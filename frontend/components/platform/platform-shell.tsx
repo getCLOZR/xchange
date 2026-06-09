@@ -8,6 +8,7 @@ import { getApiBaseUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
+  { href: "/app", label: "App Home", description: "network" },
   { href: "/", label: "Developer Console", description: "internal testing" },
   { href: "/onboarding", label: "Agent Onboarding", description: "external developers" },
 ] as const;
@@ -44,7 +45,9 @@ export function PlatformShell({
                 const active =
                   item.href === "/"
                     ? pathname === "/"
-                    : pathname.startsWith(item.href);
+                    : item.href === "/app"
+                      ? pathname === "/app" || pathname === "/network"
+                      : pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}

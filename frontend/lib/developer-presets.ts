@@ -140,6 +140,143 @@ export const AGENT_REGISTER_PRESETS: AgentRegisterPreset[] = [
       },
     ],
   },
+  {
+    id: "product-research",
+    label: "Product Research",
+    name: "Product Research Agent",
+    description: "Ecommerce market research demo worker",
+    endpoint_url_local: "http://localhost:9201",
+    endpoint_url_docker: "http://product-research-agent:9201",
+    owner_name: "CLOZR Demo",
+    version: "1.0.0",
+    cost_credits: 1,
+    capabilities: [
+      {
+        name: "product_research",
+        description: "Research product market and competitors",
+        input_schema: {
+          type: "object",
+          properties: {
+            product_name: { type: "string" },
+            target_market: { type: "string" },
+          },
+          required: ["product_name", "target_market"],
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            market_summary: { type: "string" },
+            competitors: { type: "array" },
+            customer_angles: { type: "array" },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: "seo-keywords",
+    label: "SEO Keywords",
+    name: "SEO Keyword Agent",
+    description: "Ecommerce SEO keyword demo worker",
+    endpoint_url_local: "http://localhost:9202",
+    endpoint_url_docker: "http://seo-keyword-agent:9202",
+    owner_name: "CLOZR Demo",
+    version: "1.0.0",
+    cost_credits: 1,
+    capabilities: [
+      {
+        name: "seo_keywords",
+        description: "Generate SEO keywords from market research",
+        input_schema: {
+          type: "object",
+          properties: {
+            product_name: { type: "string" },
+            market_summary: { type: "string" },
+            target_market: { type: "string" },
+          },
+          required: ["product_name"],
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            primary_keywords: { type: "array" },
+            long_tail_keywords: { type: "array" },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: "product-copy",
+    label: "Product Copy",
+    name: "Product Copy Agent",
+    description: "Ecommerce product listing copy demo worker",
+    endpoint_url_local: "http://localhost:9203",
+    endpoint_url_docker: "http://product-copy-agent:9203",
+    owner_name: "CLOZR Demo",
+    version: "1.0.0",
+    cost_credits: 1,
+    capabilities: [
+      {
+        name: "product_copy",
+        description: "Generate product title, description, and bullets",
+        input_schema: {
+          type: "object",
+          properties: {
+            product_name: { type: "string" },
+            target_market: { type: "string" },
+            primary_keywords: { type: "array" },
+            customer_angles: { type: "array" },
+          },
+          required: ["product_name"],
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            product_title: { type: "string" },
+            product_description: { type: "string" },
+            bullet_points: { type: "array" },
+            meta_description: { type: "string" },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: "marketing-copy",
+    label: "Marketing Copy",
+    name: "Marketing Copy Agent",
+    description: "Ecommerce marketing and launch copy demo worker",
+    endpoint_url_local: "http://localhost:9204",
+    endpoint_url_docker: "http://marketing-copy-agent:9204",
+    owner_name: "CLOZR Demo",
+    version: "1.0.0",
+    cost_credits: 1,
+    capabilities: [
+      {
+        name: "marketing_copy",
+        description: "Generate ads and email subjects for launch",
+        input_schema: {
+          type: "object",
+          properties: {
+            product_name: { type: "string" },
+            product_title: { type: "string" },
+            product_description: { type: "string" },
+            tone: { type: "string" },
+          },
+          required: ["product_name", "product_title"],
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            ad_copy: { type: "array" },
+            email_subjects: { type: "array" },
+            launch_angle: { type: "string" },
+          },
+        },
+      },
+    ],
+  },
 ];
 
 export const DISPATCH_PRESETS: DispatchPreset[] = [

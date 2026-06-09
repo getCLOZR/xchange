@@ -108,5 +108,57 @@ services:
       - ./demo_agents:/app/demo_agents
       - ./external_agents:/app/external_agents
 
+  product-research-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-product-research-agent
+    ports:
+      - "9201:9201"
+    command: uvicorn external_agents.product_research_agent.main:app --host 0.0.0.0 --port 9201 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
+  seo-keyword-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-seo-keyword-agent
+    ports:
+      - "9202:9202"
+    command: uvicorn external_agents.seo_keyword_agent.main:app --host 0.0.0.0 --port 9202 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
+  product-copy-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-product-copy-agent
+    ports:
+      - "9203:9203"
+    command: uvicorn external_agents.product_copy_agent.main:app --host 0.0.0.0 --port 9203 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
+  marketing-copy-agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clozr-marketing-copy-agent
+    ports:
+      - "9204:9204"
+    command: uvicorn external_agents.marketing_copy_agent.main:app --host 0.0.0.0 --port 9204 --reload
+    volumes:
+      - ./backend:/app
+      - ./demo_agents:/app/demo_agents
+      - ./external_agents:/app/external_agents
+
 volumes:
   postgres_data:

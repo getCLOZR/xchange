@@ -291,3 +291,44 @@ export interface CapabilityGroup {
 export interface CapabilityRegistryResponse {
   capabilities: CapabilityGroup[];
 }
+
+export interface EcommerceWorkflowStepTrace {
+  step_index: number;
+  capability: string;
+  task_type: string;
+  session_id: number | null;
+  worker_agent_id: number | null;
+  status: string;
+  routing_summary?: Record<string, unknown> | null;
+  execution_time_ms?: number | null;
+  output_preview?: Record<string, unknown> | null;
+}
+
+export interface EcommerceLaunchRequest {
+  requester_agent_id: number;
+  product_name: string;
+  target_market: string;
+  tone: string;
+}
+
+export interface EcommerceLaunchResponse {
+  product_name: string;
+  target_market: string;
+  tone: string;
+  market_summary: string | null;
+  competitors: Array<Record<string, unknown>>;
+  customer_angles: string[];
+  seo_keywords: string[];
+  primary_keywords: string[];
+  long_tail_keywords: string[];
+  product_title: string | null;
+  product_description: string | null;
+  bullet_points: string[];
+  meta_description: string | null;
+  ad_copy: Array<{ channel: string; copy: string }>;
+  email_subjects: string[];
+  launch_angle: string | null;
+  workflow_status: string;
+  workflow_id: string;
+  workflow_trace: Record<string, unknown>;
+}

@@ -29,4 +29,83 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /* CLOZR platform light theme — infrastructure, not chat */
+  .app-home-theme {
+    --brand-coral: #ff6658;
+    --brand-beige: #e8d9c7;
+    --brand-black: #050505;
+
+    --clozr-background: #fafaf8;
+    --clozr-surface: #ffffff;
+    --clozr-surface-soft: #f7f7f5;
+    --clozr-border: #e6e4df;
+    --clozr-border-soft: #efede8;
+
+    --clozr-text-primary: #111111;
+    --clozr-text-secondary: #555555;
+    --clozr-text-muted: #8a8a8a;
+
+    --clozr-accent-soft: #fff1ef;
+    --clozr-accent-border: #ffd1cb;
+
+    /* shadcn token mapping */
+    --background: 60 9% 98%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --primary: 5 100% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 10% 96%;
+    --secondary-foreground: 0 0% 33%;
+    --muted: 40 8% 96%;
+    --muted-foreground: 0 0% 54%;
+    --accent: 5 100% 97%;
+    --accent-foreground: 0 0% 7%;
+    --border: 40 11% 88%;
+    --input: 40 11% 88%;
+    --ring: 5 100% 67%;
+
+    color: var(--clozr-text-primary);
+    background-color: var(--clozr-background);
+    min-height: 100vh;
+  }
+
+  .app-home-theme .text-muted-foreground {
+    color: var(--clozr-text-muted);
+  }
+}
+
+@keyframes app-node-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes app-flow-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.app-network-pulse {
+  animation: app-node-pulse 4s ease-in-out infinite;
+}
+
+.app-network-pulse-delay-1 {
+  animation-delay: 1.2s;
+}
+
+.app-network-pulse-delay-2 {
+  animation-delay: 2.4s;
+}
+
+.app-network-flow {
+  animation: app-flow-dash 3s linear infinite;
 }

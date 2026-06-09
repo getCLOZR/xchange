@@ -12,6 +12,8 @@ import type {
   ContractValidationResponse,
   DispatchRequest,
   DispatchResponse,
+  EcommerceLaunchRequest,
+  EcommerceLaunchResponse,
   EndpointValidationResponse,
   HealthResponse,
   HealthCheckResponse,
@@ -118,6 +120,17 @@ export async function getRecentWorkflows(
   const { data } = await api.get<WorkflowListResponse>("/workflows/recent", {
     params: { limit },
   });
+  return data;
+}
+
+export async function runEcommerceLaunchWorkflow(
+  payload: EcommerceLaunchRequest
+): Promise<EcommerceLaunchResponse> {
+  const { data } = await api.post<EcommerceLaunchResponse>(
+    "/workflows/ecommerce-launch",
+    payload,
+    { timeout: 120_000 }
+  );
   return data;
 }
 

@@ -10,6 +10,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        clozr: {
+          coral: "var(--brand-coral)",
+          beige: "var(--brand-beige)",
+          black: "var(--brand-black)",
+          bg: "var(--clozr-background)",
+          surface: "var(--clozr-surface)",
+          "surface-soft": "var(--clozr-surface-soft)",
+          border: "var(--clozr-border)",
+          "border-soft": "var(--clozr-border-soft)",
+          primary: "var(--clozr-text-primary)",
+          secondary: "var(--clozr-text-secondary)",
+          muted: "var(--clozr-text-muted)",
+          "accent-soft": "var(--clozr-accent-soft)",
+          "accent-border": "var(--clozr-accent-border)",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
