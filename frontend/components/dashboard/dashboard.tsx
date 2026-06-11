@@ -37,7 +37,7 @@ export function Dashboard() {
       <div className="space-y-6">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">
-            CLOZR developer console
+            Gleam developer console
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Register agents, run health checks, preview routing, dispatch tasks,

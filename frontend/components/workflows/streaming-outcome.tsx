@@ -279,7 +279,7 @@ export function StreamingOutcome({
           Goal Execution Result
         </h2>
         <p className="mt-3 text-sm text-clozr-secondary">
-          Evidence assembled from multi-agent coordination across the CLOZR
+          Evidence assembled from multi-agent coordination across the Gleam
           network — not a single-model response.
         </p>
       </header>

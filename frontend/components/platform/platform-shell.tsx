@@ -1,9 +1,10 @@
 "use client";
 
-import { Activity, Boxes, Network, Terminal } from "lucide-react";
+import { Activity, Boxes, Terminal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { GleamLogo } from "@/components/brand/gleam-logo";
 import { getApiBaseUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -27,19 +28,13 @@ export function PlatformShell({
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-muted">
-                <Network className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold tracking-tight">
-                  CLOZR Exchange
-                </p>
-                <p className="text-xs text-muted-foreground font-mono">
-                  agent coordination platform
-                </p>
-              </div>
-            </div>
+            <Link
+              href="/app"
+              aria-label="Gleam home"
+              className="flex items-center transition-opacity hover:opacity-90"
+            >
+              <GleamLogo height={28} inverted />
+            </Link>
             <nav className="flex flex-wrap gap-2">
               {NAV_ITEMS.map((item) => {
                 const active =
@@ -88,7 +83,7 @@ export function PlatformShell({
       <footer className="mx-auto max-w-7xl border-t border-border px-4 py-4 sm:px-6">
         {footer ?? (
           <p className="text-xs text-muted-foreground font-mono">
-            CLOZR Exchange — developer tooling
+            Gleam — developer tooling
           </p>
         )}
       </footer>

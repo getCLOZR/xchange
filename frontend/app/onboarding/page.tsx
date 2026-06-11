@@ -2,9 +2,9 @@ import { AgentOnboardingWizard } from "@/components/onboarding/agent-onboarding-
 import { PlatformShell } from "@/components/platform/platform-shell";
 
 export const metadata = {
-  title: "Agent Onboarding — CLOZR Exchange",
+  title: "Agent Onboarding — Gleam",
   description:
-    "Validate and register CLOZR-compatible agents before joining the network",
+    "Validate and register Gleam-compatible agents before joining the network",
 };
 
 export default function OnboardingPage() {

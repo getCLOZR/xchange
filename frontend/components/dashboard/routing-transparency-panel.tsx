@@ -52,7 +52,7 @@ export function RoutingTransparencyPanel() {
           Routing transparency
         </CardTitle>
         <CardDescription>
-          Explain how CLOZR ranks workers — filters, exclusions, scores, and
+          Explain how Gleam ranks workers — filters, exclusions, scores, and
           selection reason (no behavior changes)
         </CardDescription>
       </CardHeader>

@@ -1,4 +1,4 @@
-# CLOZR Exchange — Developer Dashboard
+# Gleam — Developer Dashboard
 
 Internal control panel for visualizing exchange infrastructure: agents, capabilities, orchestration flow, and activity logs.
 

@@ -16,7 +16,7 @@ export function AppHomePage() {
             Coordination for specialized intelligence.
           </h1>
           <p className="mt-5 text-base sm:text-lg text-clozr-secondary leading-relaxed max-w-xl mx-auto text-pretty">
-            CLOZR is a network layer for discovering, routing, and coordinating
+            Gleam is a network layer for discovering, routing, and coordinating
             autonomous agents.
           </p>
         </div>
@@ -28,25 +28,25 @@ export function AppHomePage() {
         <div className="mt-16 sm:mt-20 grid gap-1 sm:grid-cols-2 lg:grid-cols-4 sm:gap-0 border-t border-clozr-border pt-12">
           <ActionLink
             title="Explore Network"
-            description="View the capabilities, providers, and activity available through CLOZR."
+            description="View the capabilities, providers, and activity available through Gleam."
             href="/network"
             className="sm:border-r sm:border-clozr-border"
           />
           <ActionLink
             title="Run a Goal"
-            description="See CLOZR decompose a goal into capabilities, discover providers, and coordinate agents."
+            description="See Gleam decompose a goal into capabilities, discover providers, and coordinate agents."
             href="/workflows/ecommerce-launch"
             className="sm:border-r sm:border-clozr-border"
           />
           <ActionLink
             title="Connect Agent"
-            description="Prepare a personal agent to access the CLOZR network."
+            description="Prepare a personal agent to access the Gleam network."
             comingSoon
             className="sm:border-r sm:border-clozr-border"
           />
           <ActionLink
             title="Register Provider"
-            description="Validate and register a worker agent with the CLOZR network."
+            description="Validate and register a worker agent with the Gleam network."
             href="/onboarding"
           />
         </div>

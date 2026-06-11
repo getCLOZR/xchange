@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AppHomeShell } from "@/components/app-home/app-home-shell";
 
 export const metadata = {
-  title: "Connect Agent — CLOZR",
-  description: "Prepare a personal agent to access the CLOZR network",
+  title: "Connect Agent — Gleam",
+  description: "Prepare a personal agent to access the Gleam network",
 };
 
 export default function ConnectPage() {
@@ -18,7 +18,7 @@ export default function ConnectPage() {
           Coming soon
         </h1>
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-          Personal agent connection to the CLOZR network is in development. For
+          Personal agent connection to the Gleam network is in development. For
           now, register a provider or use the developer console to explore
           coordination.
         </p>

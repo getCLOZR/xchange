@@ -29,6 +29,7 @@ class Settings(BaseSettings):
         alias="CORS_ORIGINS",
     )
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    worker_endpoint_mode: str = Field(default="local", alias="WORKER_ENDPOINT_MODE")
 
     @property
     def cors_origins_list(self) -> list[str]:

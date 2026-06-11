@@ -1,6 +1,9 @@
+export type WorkerEndpointMode = "local" | "docker";
+
 export interface HealthResponse {
   status: string;
   service: string;
+  worker_endpoint_mode?: WorkerEndpointMode;
 }
 
 export interface Capability {

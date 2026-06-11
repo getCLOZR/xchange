@@ -2,8 +2,8 @@ import { AppHomeShell } from "@/components/app-home/app-home-shell";
 import { CapabilityRegistryPanel } from "@/components/dashboard/capability-registry-panel";
 
 export const metadata = {
-  title: "Network — CLOZR",
-  description: "Capabilities and providers on the CLOZR exchange",
+  title: "Network — Gleam",
+  description: "Capabilities and providers on the Gleam network",
 };
 
 export default function NetworkPage() {

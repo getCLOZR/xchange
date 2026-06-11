@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CLOZR Exchange — Control Panel",
+  title: "Gleam — Control Panel",
   description: "Internal developer dashboard for agent exchange infrastructure",
 };
 

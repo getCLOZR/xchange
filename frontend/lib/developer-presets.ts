@@ -1,4 +1,4 @@
-import type { CapabilityCreateInput } from "@/types";
+import type { CapabilityCreateInput, WorkerEndpointMode } from "@/types";
 
 export interface AgentRegisterPreset {
   id: string;
@@ -44,7 +44,7 @@ export const AGENT_REGISTER_PRESETS: AgentRegisterPreset[] = [
     description: "Local demo worker for summarization tasks",
     endpoint_url_local: "http://localhost:9001",
     endpoint_url_docker: "http://demo-worker:9001",
-    owner_name: "CLOZR Demo",
+    owner_name: "Gleam Demo",
     version: "1.0.0",
     cost_credits: 1,
     capabilities: [SUMMARIZATION_CAPABILITY],
@@ -147,7 +147,7 @@ export const AGENT_REGISTER_PRESETS: AgentRegisterPreset[] = [
     description: "Ecommerce market research demo worker",
     endpoint_url_local: "http://localhost:9201",
     endpoint_url_docker: "http://product-research-agent:9201",
-    owner_name: "CLOZR Demo",
+    owner_name: "Gleam Demo",
     version: "1.0.0",
     cost_credits: 1,
     capabilities: [
@@ -180,7 +180,7 @@ export const AGENT_REGISTER_PRESETS: AgentRegisterPreset[] = [
     description: "Ecommerce SEO keyword demo worker",
     endpoint_url_local: "http://localhost:9202",
     endpoint_url_docker: "http://seo-keyword-agent:9202",
-    owner_name: "CLOZR Demo",
+    owner_name: "Gleam Demo",
     version: "1.0.0",
     cost_credits: 1,
     capabilities: [
@@ -213,7 +213,7 @@ export const AGENT_REGISTER_PRESETS: AgentRegisterPreset[] = [
     description: "Ecommerce product listing copy demo worker",
     endpoint_url_local: "http://localhost:9203",
     endpoint_url_docker: "http://product-copy-agent:9203",
-    owner_name: "CLOZR Demo",
+    owner_name: "Gleam Demo",
     version: "1.0.0",
     cost_credits: 1,
     capabilities: [
@@ -249,7 +249,7 @@ export const AGENT_REGISTER_PRESETS: AgentRegisterPreset[] = [
     description: "Ecommerce marketing and launch copy demo worker",
     endpoint_url_local: "http://localhost:9204",
     endpoint_url_docker: "http://marketing-copy-agent:9204",
-    owner_name: "CLOZR Demo",
+    owner_name: "Gleam Demo",
     version: "1.0.0",
     cost_credits: 1,
     capabilities: [
@@ -286,7 +286,7 @@ export const DISPATCH_PRESETS: DispatchPreset[] = [
     capability: "summarization",
     task_type: "summarize_text",
     input_payload: {
-      text: "CLOZR Exchange routes tasks across specialized agents.",
+      text: "Gleam routes tasks across specialized agents.",
     },
   },
   {
@@ -319,6 +319,36 @@ export const DISPATCH_PRESETS: DispatchPreset[] = [
   },
 ];
 
+export const DEFAULT_ENDPOINT_URL_LOCAL = "http://localhost:9001";
+export const DEFAULT_ENDPOINT_URL_DOCKER = "http://demo-worker:9001";
+
+export function endpointUrlForMode(mode: WorkerEndpointMode): string {
+  return mode === "docker"
+    ? DEFAULT_ENDPOINT_URL_DOCKER
+    : DEFAULT_ENDPOINT_URL_LOCAL;
+}
+
+export function swapEndpointUrlForMode(
+  currentUrl: string,
+  mode: WorkerEndpointMode
+): string {
+  if (mode === "docker" && currentUrl === DEFAULT_ENDPOINT_URL_LOCAL) {
+    return DEFAULT_ENDPOINT_URL_DOCKER;
+  }
+  if (mode === "local" && currentUrl === DEFAULT_ENDPOINT_URL_DOCKER) {
+    return DEFAULT_ENDPOINT_URL_LOCAL;
+  }
+  for (const preset of AGENT_REGISTER_PRESETS) {
+    if (mode === "docker" && currentUrl === preset.endpoint_url_local) {
+      return preset.endpoint_url_docker;
+    }
+    if (mode === "local" && currentUrl === preset.endpoint_url_docker) {
+      return preset.endpoint_url_local;
+    }
+  }
+  return currentUrl;
+}
+
 export const DEFAULT_CAPABILITY_JSON = JSON.stringify(
   SUMMARIZATION_CAPABILITY,
   null,
@@ -326,7 +356,7 @@ export const DEFAULT_CAPABILITY_JSON = JSON.stringify(
 );
 
 export const DEFAULT_DISPATCH_PAYLOAD = JSON.stringify(
-  { text: "CLOZR routes tasks across specialized agents." },
+  { text: "Gleam routes tasks across specialized agents." },
   null,
   2
 );

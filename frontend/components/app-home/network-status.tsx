@@ -67,7 +67,7 @@ export function NetworkStatus() {
         if (!cancelled) {
           setLines([
             { label: "Network status unavailable", ok: false },
-            { label: "Start the CLOZR API to see live metrics", ok: true },
+            { label: "Start the Gleam API to see live metrics", ok: true },
           ]);
         }
       }

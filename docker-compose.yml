@@ -28,8 +28,9 @@ services:
       BACKEND_HOST: 0.0.0.0
       BACKEND_PORT: 8000
       WORKER_HTTP_TIMEOUT_SECONDS: 30
-      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002
       LOG_LEVEL: INFO
+      WORKER_ENDPOINT_MODE: docker
     ports:
       - "8000:8000"
     depends_on:

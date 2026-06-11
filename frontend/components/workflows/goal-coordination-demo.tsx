@@ -221,7 +221,7 @@ export function GoalCoordinationDemo() {
       <div
         className={cn(
           "mx-auto px-5 sm:px-8",
-          hasStarted ? "max-w-6xl pb-20 pt-8" : "max-w-xl pb-32 pt-20 sm:pt-28"
+          hasStarted ? "max-w-6xl pb-20 pt-8" : "max-w-[740px] pb-24 pt-12 sm:pt-14"
         )}
       >
         {!hasStarted ? (
@@ -300,7 +300,7 @@ export function GoalCoordinationDemo() {
                       Coordinating specialized agents…
                     </div>
                     <p className="text-sm text-clozr-muted leading-relaxed">
-                      CLOZR is discovering providers, routing work between
+                      Gleam is discovering providers, routing work between
                       agents, and assembling a coordinated outcome.
                     </p>
                   </div>
@@ -326,40 +326,58 @@ function IdleGoalInput({
   error: string | null;
 }) {
   return (
-    <div className="text-center">
+    <div className="text-center -translate-y-6 sm:-translate-y-10">
       <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-clozr-primary leading-tight">
         What do you want to accomplish?
       </h1>
+      <p className="mx-auto mt-3 mb-8 sm:mb-9 max-w-[620px] text-[15px] sm:text-base leading-relaxed text-[#9A918A] text-pretty">
+        Describe a goal. Gleam will identify capabilities, discover providers,
+        and coordinate execution.
+      </p>
 
-      <div className="mt-10 space-y-5 text-left">
+      <div className="mx-auto w-full max-w-[740px] rounded-3xl border border-[#F0E8DF] bg-white/[0.68] px-6 py-7 sm:px-[30px] sm:py-7 shadow-[0_16px_40px_rgba(23,20,18,0.04)] text-left">
         <Textarea
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
-          rows={4}
-          className="resize-none border-clozr-border bg-clozr-surface text-clozr-primary text-[15px] leading-relaxed shadow-none focus-visible:ring-2 focus-visible:ring-clozr-coral/25 focus-visible:border-clozr-coral/40 rounded-lg font-sans tracking-normal"
+          rows={5}
+          className={cn(
+            "w-full max-w-[680px] min-h-[130px] resize-none font-sans tracking-normal",
+            "rounded-[14px] border border-[#E8DED3] bg-white px-5 py-[18px]",
+            "text-[15px] leading-relaxed text-[#171412]",
+            "placeholder:text-[#9A918A]",
+            "shadow-[0_1px_2px_rgba(23,20,18,0.03)]",
+            "focus-visible:outline-none focus-visible:border-[#B64235]",
+            "focus-visible:ring-[3px] focus-visible:ring-[rgba(182,66,53,0.10)]",
+            "focus-visible:ring-offset-0"
+          )}
           placeholder="Launch a premium protein shaker bottle for US fitness customers."
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onRun();
           }}
         />
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <Button
             type="button"
             onClick={onRun}
             disabled={!goal.trim()}
-            className="h-11 px-6 rounded-lg bg-clozr-black hover:bg-clozr-black/90 text-white shadow-none ring-1 ring-transparent hover:ring-clozr-coral/30 focus-visible:ring-clozr-coral/40"
+            className={cn(
+              "h-12 px-6 rounded-[10px] text-white font-medium",
+              "bg-[#171412] hover:bg-[#0f0d0b]",
+              "shadow-[0_8px_20px_rgba(23,20,18,0.10)]",
+              "disabled:opacity-50 disabled:shadow-none"
+            )}
           >
             Run Goal
             <ArrowRight className="ml-2 h-4 w-4 text-clozr-coral" />
           </Button>
-          <span className="text-xs text-clozr-muted">
+          <span className="text-xs text-[#9A918A] sm:pl-0">
             ⌘ + Enter to run
           </span>
         </div>
 
         {error ? (
-          <p className="text-sm text-red-600 font-mono">{error}</p>
+          <p className="mt-4 text-sm text-red-600 font-mono">{error}</p>
         ) : null}
       </div>
     </div>

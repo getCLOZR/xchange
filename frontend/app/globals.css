@@ -30,7 +30,7 @@
     @apply bg-background text-foreground antialiased;
   }
 
-  /* CLOZR platform light theme — infrastructure, not chat */
+  /* Gleam platform light theme — infrastructure, not chat */
   .app-home-theme {
     --brand-coral: #ff6658;
     --brand-beige: #e8d9c7;

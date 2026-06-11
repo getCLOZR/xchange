@@ -10,7 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,11 +26,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   getApiErrorMessage,
+  getHealth,
   registerAgent,
   validateContract,
   validateEndpoint,
 } from "@/lib/api";
-import { AGENT_REGISTER_PRESETS } from "@/lib/developer-presets";
+import {
+  AGENT_REGISTER_PRESETS,
+  DEFAULT_ENDPOINT_URL_LOCAL,
+  endpointUrlForMode,
+  swapEndpointUrlForMode,
+} from "@/lib/developer-presets";
 import { parseJsonField } from "@/lib/json-utils";
 import { cn } from "@/lib/utils";
 import type {
@@ -38,6 +44,7 @@ import type {
   CapabilityCreateInput,
   ContractValidationResponse,
   EndpointValidationResponse,
+  WorkerEndpointMode,
 } from "@/types";
 
 const STEPS = [
@@ -108,8 +115,8 @@ function CheckRow({
 
 export function AgentOnboardingWizard() {
   const [step, setStep] = useState(0);
-  const [endpointUrl, setEndpointUrl] = useState("http://localhost:9001");
-  const [endpointMode, setEndpointMode] = useState<"local" | "docker">("local");
+  const [endpointUrl, setEndpointUrl] = useState(DEFAULT_ENDPOINT_URL_LOCAL);
+  const [endpointMode, setEndpointMode] = useState<WorkerEndpointMode>("local");
   const [endpointResult, setEndpointResult] =
     useState<EndpointValidationResponse | null>(null);
   const [contractResult, setContractResult] =
@@ -141,6 +148,31 @@ export function AgentOnboardingWizard() {
     setContractResult(null);
     setValidationError(null);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getHealth()
+      .then((health) => {
+        if (cancelled) return;
+        const mode =
+          health.worker_endpoint_mode === "docker" ? "docker" : "local";
+        setEndpointMode(mode);
+        setEndpointUrl(endpointUrlForMode(mode));
+        resetValidations();
+      })
+      .catch(() => {
+        // Keep localhost defaults when the API is offline.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resetValidations]);
+
+  function handleEndpointModeChange(mode: WorkerEndpointMode) {
+    setEndpointMode(mode);
+    setEndpointUrl((current) => swapEndpointUrlForMode(current, mode));
+    resetValidations();
+  }
 
   function applyPreset(presetId: string) {
     const preset = AGENT_REGISTER_PRESETS.find((p) => p.id === presetId);
@@ -354,7 +386,7 @@ export function AgentOnboardingWizard() {
           Agent Onboarding
         </h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-          Validate that your agent is reachable and CLOZR contract-compliant
+          Validate that your agent is reachable and Gleam contract-compliant
           before registering on the exchange.
         </p>
       </div>
@@ -398,7 +430,7 @@ export function AgentOnboardingWizard() {
           </CardTitle>
           <CardDescription>
             {step === 0 &&
-              "Confirm the worker /health endpoint is reachable and returns a valid CLOZR health payload."}
+              "Confirm the worker /health endpoint is reachable and returns a valid Gleam health payload."}
             {step === 1 &&
               "Probe POST /execute with a validation request. Success and structured error responses both count as valid."}
             {step === 2 &&
@@ -436,7 +468,7 @@ export function AgentOnboardingWizard() {
                   type="button"
                   size="sm"
                   variant={endpointMode === "local" ? "default" : "outline"}
-                  onClick={() => setEndpointMode("local")}
+                  onClick={() => handleEndpointModeChange("local")}
                 >
                   localhost
                 </Button>
@@ -444,7 +476,7 @@ export function AgentOnboardingWizard() {
                   type="button"
                   size="sm"
                   variant={endpointMode === "docker" ? "default" : "outline"}
-                  onClick={() => setEndpointMode("docker")}
+                  onClick={() => handleEndpointModeChange("docker")}
                 >
                   Docker network
                 </Button>

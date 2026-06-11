@@ -1,9 +1,9 @@
 "use client";
 
-import { Network } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { GleamLogo } from "@/components/brand/gleam-logo";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -34,15 +34,10 @@ export function AppHomeShell({
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-6 px-5 sm:px-8">
           <Link
             href="/app"
-            className="flex items-center gap-2.5 text-clozr-primary transition-opacity hover:opacity-80"
+            aria-label="Gleam home"
+            className="flex items-center transition-opacity hover:opacity-80"
           >
-            <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-clozr-border bg-clozr-surface">
-              <Network
-                className="h-3.5 w-3.5 text-clozr-coral"
-                strokeWidth={1.75}
-              />
-            </span>
-            <span className="text-sm font-semibold tracking-tight">CLOZR</span>
+            <GleamLogo height={26} priority />
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2">
             {NAV.map((item) => {

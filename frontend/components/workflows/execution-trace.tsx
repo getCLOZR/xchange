@@ -172,7 +172,7 @@ export function ExecutionTrace({
   return (
     <div className="border-t border-clozr-border pt-4">
       <p className="text-xs text-clozr-secondary leading-relaxed mb-4">
-        CLOZR decomposed the goal, discovered providers, and coordinated
+        Gleam decomposed the goal, discovered providers, and coordinated
         execution.
       </p>
 

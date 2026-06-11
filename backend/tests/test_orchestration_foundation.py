@@ -42,7 +42,11 @@ def _sample_agent(agent_id: int = 1, capability: str = "summarization"):
 def test_health_endpoint(client):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "clozr-exchange-api"}
+    assert response.json() == {
+        "status": "ok",
+        "service": "clozr-exchange-api",
+        "worker_endpoint_mode": "local",
+    }
 
 
 def test_agent_registration(client, monkeypatch):

@@ -20,7 +20,7 @@ export function ArchitectureNotes() {
       </CardHeader>
       <CardContent className="text-sm text-muted-foreground space-y-2">
         <p>
-          CLOZR Exchange is domain-agnostic orchestration infrastructure for
+          Gleam is domain-agnostic orchestration infrastructure for
           AI agents.
         </p>
         <p>

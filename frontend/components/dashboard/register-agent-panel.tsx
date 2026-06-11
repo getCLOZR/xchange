@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +14,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AGENT_REGISTER_PRESETS } from "@/lib/developer-presets";
-import { getApiErrorMessage, registerAgent } from "@/lib/api";
+import {
+  AGENT_REGISTER_PRESETS,
+  DEFAULT_ENDPOINT_URL_LOCAL,
+  endpointUrlForMode,
+  swapEndpointUrlForMode,
+} from "@/lib/developer-presets";
+import { getApiErrorMessage, getHealth, registerAgent } from "@/lib/api";
 import { parseJsonField } from "@/lib/json-utils";
-import type { Agent, CapabilityCreateInput } from "@/types";
+import type { Agent, CapabilityCreateInput, WorkerEndpointMode } from "@/types";
 
 interface CapabilityDraft {
   key: string;
@@ -56,7 +61,7 @@ function newCapabilityDraft(): CapabilityDraft {
 export function RegisterAgentPanel({ onRegistered }: RegisterAgentPanelProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [endpointUrl, setEndpointUrl] = useState("http://localhost:9001");
+  const [endpointUrl, setEndpointUrl] = useState(DEFAULT_ENDPOINT_URL_LOCAL);
   const [ownerName, setOwnerName] = useState("Developer");
   const [version, setVersion] = useState("1.0.0");
   const [costCredits, setCostCredits] = useState("1");
@@ -67,7 +72,30 @@ export function RegisterAgentPanel({ onRegistered }: RegisterAgentPanelProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [endpointMode, setEndpointMode] = useState<"local" | "docker">("local");
+  const [endpointMode, setEndpointMode] = useState<WorkerEndpointMode>("local");
+
+  useEffect(() => {
+    let cancelled = false;
+    getHealth()
+      .then((health) => {
+        if (cancelled) return;
+        const mode =
+          health.worker_endpoint_mode === "docker" ? "docker" : "local";
+        setEndpointMode(mode);
+        setEndpointUrl(endpointUrlForMode(mode));
+      })
+      .catch(() => {
+        // Keep localhost defaults when the API is offline.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleEndpointModeChange(mode: WorkerEndpointMode) {
+    setEndpointMode(mode);
+    setEndpointUrl((current) => swapEndpointUrlForMode(current, mode));
+  }
 
   function applyPreset(presetId: string) {
     const preset = AGENT_REGISTER_PRESETS.find((p) => p.id === presetId);
@@ -222,7 +250,7 @@ export function RegisterAgentPanel({ onRegistered }: RegisterAgentPanelProps) {
               type="button"
               size="sm"
               variant={endpointMode === "local" ? "default" : "outline"}
-              onClick={() => setEndpointMode("local")}
+              onClick={() => handleEndpointModeChange("local")}
             >
               localhost
             </Button>
@@ -230,7 +258,7 @@ export function RegisterAgentPanel({ onRegistered }: RegisterAgentPanelProps) {
               type="button"
               size="sm"
               variant={endpointMode === "docker" ? "default" : "outline"}
-              onClick={() => setEndpointMode("docker")}
+              onClick={() => handleEndpointModeChange("docker")}
             >
               Docker service
             </Button>
