@@ -1,10 +1,32 @@
+import {
+  checkAllAgentsHealth,
+  getAgents,
+  getCapabilities,
+  getHealth,
+  registerAgent,
+} from "@/lib/api";
+import {
+  AGENT_REGISTER_PRESETS,
+  type AgentRegisterPreset,
+} from "@/lib/developer-presets";
 import type {
+  AgentRegisterRequest,
   CapabilityGroup,
   EcommerceLaunchRequest,
   EcommerceLaunchResponse,
+  WorkerEndpointMode,
 } from "@/types";
 
 /** Capabilities required for the goal coordination demo (maps to existing workflow). */
+const GOAL_DEMO_WORKER_PRESET_IDS = [
+  "product-research",
+  "seo-keywords",
+  "product-copy",
+  "marketing-copy",
+] as const;
+
+const GLEAM_REQUESTER_NAME = "Gleam";
+
 export const PLANNED_CAPABILITIES = [
   {
     name: "product_research",
@@ -115,6 +137,85 @@ export const COORDINATION_HANDOFFS: CoordinationHandoff[] = [
     to: "Marketing Copy Agent",
   },
 ];
+
+function presetToRegisterRequest(
+  preset: AgentRegisterPreset,
+  mode: WorkerEndpointMode
+): AgentRegisterRequest {
+  return {
+    name: preset.name,
+    description: preset.description,
+    endpoint_url:
+      mode === "docker"
+        ? preset.endpoint_url_docker
+        : preset.endpoint_url_local,
+    owner_name: preset.owner_name,
+    version: preset.version,
+    cost_credits: preset.cost_credits,
+    is_active: true,
+    capabilities: preset.capabilities,
+  };
+}
+
+function hasCapabilityProvider(
+  registry: CapabilityGroup[],
+  capabilityName: string
+): boolean {
+  const group = registry.find((g) => g.name === capabilityName);
+  return (group?.provider_count ?? 0) > 0;
+}
+
+/** Register Gleam requester + ecommerce workers when missing; returns requester id. */
+export async function ensureGoalDemoNetwork(): Promise<number> {
+  const health = await getHealth();
+  const mode: WorkerEndpointMode =
+    health.worker_endpoint_mode === "docker" ? "docker" : "local";
+
+  let registry = (await getCapabilities()).capabilities;
+
+  for (const presetId of GOAL_DEMO_WORKER_PRESET_IDS) {
+    const preset = AGENT_REGISTER_PRESETS.find((p) => p.id === presetId);
+    if (!preset) continue;
+    const capName = preset.capabilities[0]?.name;
+    if (!capName || hasCapabilityProvider(registry, capName)) continue;
+    await registerAgent(presetToRegisterRequest(preset, mode));
+    registry = (await getCapabilities()).capabilities;
+  }
+
+  const agents = (await getAgents()).agents;
+  let requester = agents.find((a) => a.name === GLEAM_REQUESTER_NAME);
+
+  if (!requester) {
+    requester = await registerAgent({
+      name: GLEAM_REQUESTER_NAME,
+      description: "Goal coordination requester for the Gleam demo",
+      endpoint_url:
+        mode === "docker" ? "http://backend:8000" : "http://localhost:8000",
+      owner_name: "Gleam",
+      version: "1.0.0",
+      cost_credits: 0,
+      is_active: true,
+      capabilities: [
+        {
+          name: "goal_orchestration",
+          description: "Submits product launch goals to the agent network",
+          input_schema: {
+            type: "object",
+            properties: { goal: { type: "string" } },
+            required: ["goal"],
+          },
+          output_schema: {
+            type: "object",
+            properties: { workflow_id: { type: "string" } },
+          },
+        },
+      ],
+    });
+  }
+
+  await checkAllAgentsHealth();
+  return requester.id;
+}
 
 export function parseGoalToWorkflowInput(
   goal: string,

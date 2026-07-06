@@ -23,6 +23,7 @@ import {
 import {
   buildProviderDiscovery,
   discoverProviders,
+  ensureGoalDemoNetwork,
   getTotalProvidersEvaluated,
   parseGoalToWorkflowInput,
   PLANNED_CAPABILITIES,
@@ -146,6 +147,17 @@ export function GoalCoordinationDemo() {
 
     setStep("goal-received", { visible: true, status: "completed" });
     setFlowActiveIndex(0);
+
+    let requesterAgentId: number;
+    try {
+      requesterAgentId = await ensureGoalDemoNetwork();
+    } catch (e) {
+      setError(getApiErrorMessage(e));
+      setPhase("failed");
+      setStep("goal-received", { status: "failed" });
+      return;
+    }
+
     await sleep(450);
 
     setStep("capability-plan", { visible: true, status: "running" });
@@ -183,7 +195,7 @@ export function GoalCoordinationDemo() {
     setFlowActiveIndex(3);
 
     const workflowPromise = runEcommerceLaunchWorkflow(
-      parseGoalToWorkflowInput(trimmed, 1)
+      parseGoalToWorkflowInput(trimmed, requesterAgentId)
     );
 
     let workflowResult: EcommerceLaunchResponse;
