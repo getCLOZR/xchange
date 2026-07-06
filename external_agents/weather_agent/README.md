@@ -1,6 +1,6 @@
 # External Weather Agent
 
-Standalone worker for **CLOZR Agent Contract v0.1**. Does not import CLOZR backend code.
+Standalone worker for **Gleam Agent Contract v0.1**. Does not import Gleam backend code.
 
 | Item | Value |
 |------|--------|
@@ -20,7 +20,7 @@ uvicorn external_agents.weather_agent.main:app --host 0.0.0.0 --port 9101 --relo
 
 Docker Compose service: `weather-agent` on port **9101**.
 
-## Register with CLOZR
+## Register with Gleam
 
 **Local API + local agent:**
 

@@ -1,6 +1,6 @@
 # External Photo Processing Agent
 
-Standalone worker for **CLOZR Agent Contract v0.1**. Does not import CLOZR backend code.
+Standalone worker for **Gleam Agent Contract v0.1**. Does not import Gleam backend code.
 
 | Item | Value |
 |------|--------|
@@ -20,7 +20,7 @@ uvicorn external_agents.photo_processing_agent.main:app --host 0.0.0.0 --port 92
 
 Docker Compose service: `photo-processing-agent` on port **9205**.
 
-## Register with CLOZR
+## Register with Gleam
 
 **Docker API + agent in Compose:**
 

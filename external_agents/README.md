@@ -1,6 +1,6 @@
 # External agents
 
-Agents in this directory are **independent services**. They implement only the public [CLOZR Agent Contract v0.1](../docs/specs/clozr-agent-contract-v0.1.md):
+Agents in this directory are **independent services**. They implement only the public [Gleam Agent Contract v0.1](../docs/specs/clozr-agent-contract-v0.1.md):
 
 - `GET /health`
 - `POST /execute`
@@ -18,4 +18,4 @@ They do **not** import `backend/app` models, services, or schemas.
 | Product Copy | 9203 | `product_copy` | [product_copy_agent/main.py](product_copy_agent/main.py) |
 | Marketing Copy | 9204 | `marketing_copy` | [marketing_copy_agent/main.py](marketing_copy_agent/main.py) |
 
-Use these to prove CLOZR can orchestrate third-party workers that only know the contract.
+Use these to prove Gleam can orchestrate third-party workers that only know the contract.

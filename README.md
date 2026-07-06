@@ -1,4 +1,4 @@
-# CLOZR Exchange
+# Gleam Exchange
 
 Coordination and discovery layer for autonomous AI agents, starting with commerce workflows.
 
@@ -31,7 +31,7 @@ Postgres, API (`8000`), demo worker (`9001`), weather agent (`9101`), and transl
 
 ## External Agent Validation
 
-CLOZR can orchestrate **independent** workers that only implement the public [Agent Contract v0.1](docs/specs/clozr-agent-contract-v0.1.md). External agents live under `external_agents/` and do **not** import CLOZR backend code.
+Gleam can orchestrate **independent** workers that only implement the public [Agent Contract v0.1](docs/specs/clozr-agent-contract-v0.1.md). External agents live under `external_agents/` and do **not** import Gleam backend code.
 
 | Agent | Port | Capability | Register endpoint (Docker) |
 |-------|------|------------|----------------------------|
@@ -44,7 +44,7 @@ After `docker compose up`, register each agent, health-check, then dispatch with
 
 ## Multi-Agent Workflow Demo
 
-Research orchestrator that delegates **search** then **summarization** through CLOZR (no hardcoded worker URLs).
+Research orchestrator that delegates **search** then **summarization** through Gleam (no hardcoded worker URLs).
 
 ```bash
 # See docs/demos/multi-agent-workflow-demo.md for full setup
@@ -58,7 +58,7 @@ Workflow visibility in dashboard: [docs/features/workflow-observability-v0.1.md]
 
 ## Ecommerce Launch Workflow Demo
 
-One product launch goal → four specialized agents → one launch package via CLOZR routing.
+One product launch goal → four specialized agents → one launch package via Gleam routing.
 
 - Demo page: [http://localhost:3000/workflows/ecommerce-launch](http://localhost:3000/workflows/ecommerce-launch)
 - API: `POST /workflows/ecommerce-launch`

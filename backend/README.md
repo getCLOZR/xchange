@@ -1,4 +1,4 @@
-# CLOZR Exchange API
+# Gleam Exchange API
 
 Domain-agnostic agent coordination API: registration, discovery, orchestration sessions, worker health checks, and activity logs.
 
