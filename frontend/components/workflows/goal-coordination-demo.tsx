@@ -33,8 +33,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { EcommerceLaunchResponse } from "@/types";
 
-const DEFAULT_GOAL =
-  "Launch a premium protein shaker bottle for US fitness customers.";
+const DEFAULT_GOAL = "";
+
+const GOAL_PLACEHOLDER =
+  "e.g. Launch noise-cancelling headphones for remote workers";
 
 const TIMELINE_ORDER: TimelineStepId[] = [
   "goal-received",
@@ -242,6 +244,7 @@ export function GoalCoordinationDemo() {
             setGoal={setGoal}
             onRun={() => void runGoal()}
             error={error}
+            placeholder={GOAL_PLACEHOLDER}
           />
         ) : (
           <div className="space-y-8">
@@ -331,11 +334,13 @@ function IdleGoalInput({
   setGoal,
   onRun,
   error,
+  placeholder,
 }: {
   goal: string;
   setGoal: (v: string) => void;
   onRun: () => void;
   error: string | null;
+  placeholder: string;
 }) {
   return (
     <div className="text-center -translate-y-6 sm:-translate-y-10">
@@ -362,7 +367,7 @@ function IdleGoalInput({
             "focus-visible:ring-[3px] focus-visible:ring-[rgba(182,66,53,0.10)]",
             "focus-visible:ring-offset-0"
           )}
-          placeholder="Launch a premium protein shaker bottle for US fitness customers."
+          placeholder={placeholder}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onRun();
           }}

@@ -331,6 +331,8 @@ export interface EcommerceLaunchResponse {
   ad_copy: Array<{ channel: string; copy: string }>;
   email_subjects: string[];
   launch_angle: string | null;
+  /** Full output_payload from the seo_keywords worker (Gleam SEO Agent). */
+  seo_agent_output?: Record<string, unknown> | null;
   workflow_status: string;
   workflow_id: string;
   workflow_trace: Record<string, unknown>;

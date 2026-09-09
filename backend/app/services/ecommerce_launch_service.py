@@ -250,6 +250,8 @@ def _merge_step_output(step_index: int, context: dict[str, Any], output: dict[st
         context["long_tail_keywords"] = output.get("long_tail_keywords", [])
         context["search_intent"] = output.get("search_intent")
         context["seo_angle"] = output.get("seo_angle")
+        # Preserve the full worker response for the demo outcome UI.
+        context["seo_agent_output"] = output
     elif step_index == 3:
         context["product_title"] = output.get("product_title", "")
         context["product_description"] = output.get("product_description", "")
@@ -350,6 +352,7 @@ def _build_response(
         ad_copy=context.get("ad_copy") or [],
         email_subjects=context.get("email_subjects") or [],
         launch_angle=context.get("launch_angle"),
+        seo_agent_output=context.get("seo_agent_output"),
         workflow_status=status,
         workflow_id=workflow_id,
         workflow_trace=workflow_trace,

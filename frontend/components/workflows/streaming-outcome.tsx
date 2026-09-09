@@ -1,149 +1,326 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { buildRoutingSummary } from "@/lib/goal-coordination-demo";
-import { useStreamingText } from "@/lib/use-streaming-text";
 import { cn } from "@/lib/utils";
 import type { EcommerceLaunchResponse } from "@/types";
 
-interface OutcomeSection {
-  id: string;
-  title: string;
-  content: string;
+interface KeywordItem {
+  keyword: string;
+  intent?: string;
+  rationale?: string;
+  searchVolume?: string;
+  cpc?: string;
+  stage?: string;
+  reasonForBidding?: string;
 }
 
-const STRUCTURED_ARTIFACTS = [
-  { id: "brief", label: "Product page brief", status: "Generated" },
-  { id: "seo", label: "SEO keyword map", status: "Structured" },
-  { id: "metadata", label: "Product title and metadata", status: "Generated" },
-  { id: "ads", label: "Ad copy set", status: "Ready for export" },
-  { id: "email", label: "Email launch brief", status: "Generated" },
-  { id: "trace", label: "Workflow trace JSON", status: "Structured" },
-] as const;
-
-function formatResearch(result: EcommerceLaunchResponse): string {
-  const parts: string[] = [];
-  if (result.market_summary) parts.push(result.market_summary);
-  if (result.competitors.length > 0) {
-    parts.push("");
-    parts.push("Competitive landscape:");
-    for (const c of result.competitors) {
-      parts.push(
-        `• ${String(c.name)} — ${String(c.positioning)} (${String(c.price_range)})`
-      );
-    }
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
   }
-  return parts.join("\n");
+  return null;
 }
 
-function formatMarketing(result: EcommerceLaunchResponse): string {
-  const parts: string[] = [];
-  if (result.launch_angle) parts.push(result.launch_angle);
-  if (result.customer_angles.length > 0) {
-    parts.push("");
-    parts.push("Customer angles:");
-    for (const angle of result.customer_angles) {
-      parts.push(`• ${angle}`);
-    }
-  }
-  if (result.bullet_points.length > 0) {
-    parts.push("");
-    parts.push("Key highlights:");
-    for (const point of result.bullet_points) {
-      parts.push(`• ${point}`);
-    }
-  }
-  if (result.ad_copy.length > 0) {
-    parts.push("");
-    for (const ad of result.ad_copy) {
-      parts.push(`${ad.channel}:\n${ad.copy}`);
-    }
-  }
-  if (result.meta_description) {
-    parts.push("");
-    parts.push(`Meta: ${result.meta_description}`);
-  }
-  return parts.join("\n");
+function formatVolume(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "number") return value.toLocaleString();
+  const s = String(value);
+  if (!s || s === "emerging/untracked") return "Emerging";
+  const n = Number(s);
+  return Number.isFinite(n) ? n.toLocaleString() : s;
 }
 
-function buildOutcomeSections(result: EcommerceLaunchResponse): OutcomeSection[] {
-  return [
-    {
-      id: "research",
-      title: "Market Research",
-      content: formatResearch(result),
-    },
-    {
-      id: "seo",
-      title: "SEO Opportunities",
-      content: result.seo_keywords.join(", "),
-    },
-    {
-      id: "title",
-      title: "Product Title",
-      content: result.product_title ?? "",
-    },
-    {
-      id: "description",
-      title: "Product Description",
-      content: result.product_description ?? "",
-    },
-    {
-      id: "marketing",
-      title: "Marketing Angles",
-      content: formatMarketing(result),
-    },
-    {
-      id: "email",
-      title: "Email Subjects",
-      content: result.email_subjects.map((s) => `• ${s}`).join("\n"),
-    },
-  ].filter((s) => s.content.trim().length > 0);
+function formatCpc(value: unknown): string | undefined {
+  if (value == null || value === "N/A") return undefined;
+  const n = typeof value === "number" ? value : Number(value);
+  if (Number.isFinite(n)) return `$${n.toFixed(2)}`;
+  return String(value);
 }
 
-function StreamingSection({
-  title,
-  content,
-  active,
-  onFinished,
+function parseKeywords(items: unknown): KeywordItem[] {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const result: KeywordItem[] = [];
+  for (const item of items) {
+    if (typeof item === "string") {
+      const keyword = item.trim();
+      if (keyword) result.push({ keyword });
+      continue;
+    }
+    const rec = asRecord(item);
+    if (!rec) continue;
+    const keyword = String(rec.keyword ?? "").trim();
+    if (!keyword) continue;
+    result.push({
+      keyword,
+      intent: typeof rec.intent === "string" ? rec.intent : undefined,
+      rationale: typeof rec.rationale === "string" ? rec.rationale : undefined,
+      searchVolume: formatVolume(rec.search_volume),
+      cpc: formatCpc(rec.cpc),
+      stage:
+        typeof rec.buyer_journey_stage === "string"
+          ? rec.buyer_journey_stage
+          : undefined,
+      reasonForBidding:
+        typeof rec.reason_for_bidding === "string"
+          ? rec.reason_for_bidding
+          : undefined,
+    });
+  }
+  return result;
+}
+
+interface SeoViewModel {
+  title: string | null;
+  strategy: string | null;
+  metaDescription: string | null;
+  amazonTerms: string[];
+  primary: KeywordItem[];
+  secondary: KeywordItem[];
+  longTail: KeywordItem[];
+  gaps: KeywordItem[];
+  ppc: KeywordItem[];
+}
+
+function buildSeoViewModel(result: EcommerceLaunchResponse): SeoViewModel {
+  const seo = asRecord(result.seo_agent_output);
+  const empty: SeoViewModel = {
+    title: null,
+    strategy: null,
+    metaDescription: null,
+    amazonTerms: [],
+    primary: [],
+    secondary: [],
+    longTail: [],
+    gaps: [],
+    ppc: [],
+  };
+
+  if (!seo) {
+    return {
+      ...empty,
+      primary: result.primary_keywords.map((keyword) => ({ keyword })),
+      longTail: result.long_tail_keywords.map((keyword) => ({ keyword })),
+    };
+  }
+
+  const campaign = asRecord(seo.raw_campaign) ?? {};
+
+  const primary =
+    parseKeywords(campaign.primary_keywords).length > 0
+      ? parseKeywords(campaign.primary_keywords)
+      : parseKeywords(seo.primary_keywords);
+
+  const longTail =
+    parseKeywords(campaign.long_tail_keywords).length > 0
+      ? parseKeywords(campaign.long_tail_keywords)
+      : parseKeywords(seo.long_tail_keywords);
+
+  const amazonRaw =
+    typeof campaign.amazon_backend_search_terms === "string"
+      ? campaign.amazon_backend_search_terms
+      : "";
+
+  return {
+    title:
+      (typeof seo.seo_angle === "string" && seo.seo_angle) ||
+      (typeof campaign.recommended_title_structure === "string" &&
+        campaign.recommended_title_structure) ||
+      null,
+    strategy:
+      (typeof seo.search_intent === "string" && seo.search_intent) ||
+      (typeof campaign.keyword_strategy_summary === "string" &&
+        campaign.keyword_strategy_summary) ||
+      null,
+    metaDescription:
+      typeof campaign.meta_description === "string"
+        ? campaign.meta_description
+        : null,
+    amazonTerms: amazonRaw
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean),
+    primary,
+    secondary: parseKeywords(campaign.secondary_keywords),
+    longTail,
+    gaps: parseKeywords(campaign.competitor_gap_keywords),
+    ppc: parseKeywords(campaign.ppc_exact_match_targets),
+  };
+}
+
+function stageTone(stage: string): string {
+  const s = stage.toLowerCase();
+  if (s.includes("decision")) {
+    return "border-[#c45a4a]/35 bg-[#ff6658]/10 text-[#9a3d32]";
+  }
+  if (s.includes("consideration")) {
+    return "border-[#c4a574]/40 bg-[#f3e6d4]/70 text-[#7a5c2e]";
+  }
+  if (s.includes("awareness")) {
+    return "border-clozr-border bg-[#eef2f6] text-[#3d4a5c]";
+  }
+  return "border-clozr-border bg-clozr-surface-soft text-clozr-secondary";
+}
+
+function MetricChip({
+  label,
+  value,
+  emphasis,
 }: {
-  title: string;
-  content: string;
-  active: boolean;
-  onFinished: () => void;
+  label: string;
+  value: string;
+  emphasis?: "stage" | "default";
 }) {
-  const { displayed, done } = useStreamingText(content, {
-    enabled: active,
-    charDelayMs: 12,
-  });
-  const finishedRef = useRef(false);
-
-  useEffect(() => {
-    finishedRef.current = false;
-  }, [content]);
-
-  useEffect(() => {
-    if (active && done && !finishedRef.current) {
-      finishedRef.current = true;
-      onFinished();
-    }
-  }, [active, done, onFinished]);
-
-  if (!active) return null;
+  if (emphasis === "stage") {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium tracking-wide",
+          stageTone(value)
+        )}
+      >
+        <span className="opacity-70 uppercase tracking-[0.14em] text-[9px]">
+          {label}
+        </span>
+        <span className="font-semibold">{value}</span>
+      </span>
+    );
+  }
 
   return (
-    <section className="pb-10 border-b border-clozr-border-soft last:border-0">
-      <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-clozr-primary mb-4">
-        {title}
-      </h3>
-      <div className="text-[15px] sm:text-base leading-[1.75] text-clozr-secondary whitespace-pre-wrap">
-        {displayed}
-        {!done ? (
-          <span className="inline-block w-[2px] h-[1em] bg-clozr-coral/50 ml-0.5 align-middle animate-pulse" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-clozr-border bg-white/80 px-2.5 py-1 text-[11px] shadow-[0_1px_0_rgba(17,17,17,0.03)]">
+      <span className="font-semibold uppercase tracking-[0.14em] text-[9px] text-clozr-muted">
+        {label}
+      </span>
+      <span className="font-semibold tabular-nums text-clozr-primary">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+function KeywordCard({ item }: { item: KeywordItem }) {
+  const note = item.rationale || item.reasonForBidding;
+
+  return (
+    <li className="group relative overflow-hidden rounded-2xl border border-clozr-border bg-gradient-to-br from-white to-[#faf8f5] px-4 py-4 shadow-[0_1px_2px_rgba(17,17,17,0.03)] transition-[border-color,box-shadow] hover:border-[#d8cfc3] hover:shadow-[0_8px_24px_rgba(17,17,17,0.04)]">
+      <div className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#ff6658]/80 via-[#ff6658]/25 to-transparent opacity-80" />
+      <div className="pl-2">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="text-[15px] sm:text-base font-semibold tracking-tight text-clozr-primary leading-snug">
+            {item.keyword}
+          </p>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {item.searchVolume ? (
+              <MetricChip label="Vol" value={item.searchVolume} />
+            ) : null}
+            {item.cpc ? <MetricChip label="CPC" value={item.cpc} /> : null}
+            {item.stage ? (
+              <MetricChip label="Stage" value={item.stage} emphasis="stage" />
+            ) : null}
+          </div>
+        </div>
+
+        {item.intent ? (
+          <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-lg bg-[#171412]/[0.035] px-2.5 py-1.5">
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff6658]">
+              Intent
+            </span>
+            <span className="text-[12px] font-medium text-clozr-secondary truncate">
+              {item.intent}
+            </span>
+          </div>
+        ) : null}
+
+        {note ? (
+          <p className="mt-3 text-[13.5px] leading-[1.7] text-clozr-secondary">
+            {note}
+          </p>
         ) : null}
       </div>
-    </section>
+    </li>
+  );
+}
+
+function Reveal({
+  show,
+  children,
+  className,
+}: {
+  show: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  if (!show) return null;
+  return (
+    <div
+      className={cn(
+        "animate-in fade-in slide-in-from-bottom-2 duration-500",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionLabel({
+  index,
+  children,
+}: {
+  index?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mb-3.5 flex items-center gap-3">
+      {index ? (
+        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-[#171412] px-1.5 text-[11px] font-semibold tabular-nums text-white">
+          {index}
+        </span>
+      ) : (
+        <span className="h-1.5 w-1.5 rounded-full bg-[#ff6658]" />
+      )}
+      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-clozr-primary">
+        {children}
+      </p>
+      <span className="h-px flex-1 bg-gradient-to-r from-clozr-border to-transparent" />
+    </div>
+  );
+}
+
+function KeywordGroup({
+  index,
+  title,
+  items,
+  show,
+}: {
+  index: string;
+  title: string;
+  items: KeywordItem[];
+  show: boolean;
+}) {
+  if (!items.length) return null;
+  return (
+    <Reveal show={show} className="pt-9">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-[#171412] px-1.5 text-[11px] font-semibold tabular-nums text-white">
+          {index}
+        </span>
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-clozr-primary">
+          {title}
+        </p>
+        <span className="h-px flex-1 bg-gradient-to-r from-clozr-border to-transparent" />
+        <span className="shrink-0 rounded-full border border-clozr-border bg-white px-2.5 py-1 text-[11px] font-semibold tabular-nums text-clozr-secondary">
+          {items.length}
+        </span>
+      </div>
+      <ul className="space-y-3">
+        {items.map((item) => (
+          <KeywordCard key={`${title}-${item.keyword}`} item={item} />
+        ))}
+      </ul>
+    </Reveal>
   );
 }
 
@@ -153,92 +330,44 @@ function NetworkRoutingSummary({
   result: EcommerceLaunchResponse;
 }) {
   const summary = buildRoutingSummary(result);
-
   const stats = [
-    { label: "capabilities recognized", value: summary.capabilitiesRecognized },
-    { label: "providers selected", value: summary.providersSelected },
-    { label: "agent executions completed", value: summary.agentExecutions },
-    { label: "handoffs between agents", value: summary.handoffs },
-    { label: "coordinated outcomes generated", value: summary.outcomesGenerated },
+    { label: "Capabilities", value: summary.capabilitiesRecognized },
+    { label: "Providers", value: summary.providersSelected },
+    { label: "Executions", value: summary.agentExecutions },
+    { label: "Handoffs", value: summary.handoffs },
   ];
 
   return (
-    <div className="mb-10 rounded-xl border border-clozr-border bg-clozr-surface px-4 py-4 sm:px-5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-clozr-muted">
-        Network routing summary
-      </p>
-      <ul className="mt-3 space-y-1.5">
+    <div className="mb-9 overflow-hidden rounded-2xl border border-clozr-border bg-white shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+      <div className="flex items-center justify-between gap-3 border-b border-clozr-border-soft bg-[#faf8f5] px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#ff6658]" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-clozr-primary">
+            Network routing
+          </p>
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-clozr-muted">
+          Live run
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-clozr-border-soft">
         {stats.map((stat) => (
-          <li
-            key={stat.label}
-            className="flex items-baseline gap-2 text-sm text-clozr-primary"
-          >
-            <span className="font-semibold tabular-nums text-clozr-coral">
+          <div key={stat.label} className="bg-white px-4 py-4 min-w-0">
+            <p className="text-[22px] font-semibold tabular-nums tracking-tight text-clozr-primary">
               {stat.value}
-            </span>
-            <span className="text-clozr-secondary">{stat.label}</span>
-          </li>
+            </p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-clozr-muted">
+              {stat.label}
+            </p>
+          </div>
         ))}
-      </ul>
+      </div>
       {summary.workflowId ? (
-        <p className="mt-3 text-[11px] font-mono text-clozr-muted">
-          workflow_id: {summary.workflowId}
+        <p className="border-t border-clozr-border-soft px-4 py-2.5 text-[10px] font-mono text-clozr-muted truncate">
+          {summary.workflowId}
         </p>
       ) : null}
     </div>
-  );
-}
-
-function StructuredArtifacts({
-  result,
-  visible,
-}: {
-  result: EcommerceLaunchResponse;
-  visible: boolean;
-}) {
-  if (!visible) return null;
-
-  return (
-    <section className="pt-4 animate-in fade-in duration-500">
-      <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-clozr-primary mb-4">
-        Structured Artifacts
-      </h3>
-      <p className="text-sm text-clozr-secondary mb-5">
-        System-generated package assembled from coordinated agent outputs.
-      </p>
-      <ul className="space-y-2">
-        {STRUCTURED_ARTIFACTS.map((artifact) => (
-          <li
-            key={artifact.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-clozr-border bg-clozr-surface px-3 py-2.5"
-          >
-            <span className="text-sm text-clozr-primary">{artifact.label}</span>
-            <span
-              className={cn(
-                "text-[10px] font-medium uppercase tracking-wide rounded-full px-2 py-0.5",
-                artifact.status === "Structured"
-                  ? "bg-clozr-surface-soft text-clozr-secondary border border-clozr-border"
-                  : artifact.status === "Ready for export"
-                    ? "bg-clozr-accent-soft text-clozr-coral border border-clozr-accent-border"
-                    : "bg-clozr-surface-soft text-clozr-muted"
-              )}
-            >
-              {artifact.status}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {result.workflow_trace ? (
-        <details className="mt-5 group">
-          <summary className="text-xs text-clozr-muted cursor-pointer hover:text-clozr-primary">
-            View workflow trace JSON
-          </summary>
-          <pre className="mt-2 text-[10px] font-mono overflow-x-auto rounded-lg border border-clozr-border bg-clozr-surface p-3 text-clozr-secondary max-h-48">
-            {JSON.stringify(result.workflow_trace, null, 2)}
-          </pre>
-        </details>
-      ) : null}
-    </section>
   );
 }
 
@@ -249,15 +378,38 @@ export function StreamingOutcome({
   result: EcommerceLaunchResponse;
   started: boolean;
 }) {
-  const sections = buildOutcomeSections(result);
-  const [sectionIndex, setSectionIndex] = useState(0);
-  const [allComplete, setAllComplete] = useState(false);
+  const view = useMemo(() => buildSeoViewModel(result), [result]);
+  const [step, setStep] = useState(0);
+
+  const hasContent =
+    Boolean(view.title) ||
+    Boolean(view.strategy) ||
+    view.primary.length > 0 ||
+    view.secondary.length > 0 ||
+    view.longTail.length > 0 ||
+    view.gaps.length > 0 ||
+    view.ppc.length > 0 ||
+    Boolean(view.metaDescription) ||
+    view.amazonTerms.length > 0;
 
   useEffect(() => {
-    if (started) {
-      setSectionIndex(0);
-      setAllComplete(false);
+    if (!started) {
+      setStep(0);
+      return;
     }
+    setStep(0);
+    const timers = [
+      window.setTimeout(() => setStep(1), 200),
+      window.setTimeout(() => setStep(2), 650),
+      window.setTimeout(() => setStep(3), 1100),
+      window.setTimeout(() => setStep(4), 1550),
+      window.setTimeout(() => setStep(5), 2000),
+      window.setTimeout(() => setStep(6), 2450),
+      window.setTimeout(() => setStep(7), 2900),
+      window.setTimeout(() => setStep(8), 3350),
+      window.setTimeout(() => setStep(9), 3800),
+    ];
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [started, result]);
 
   if (!started) {
@@ -270,46 +422,131 @@ export function StreamingOutcome({
   }
 
   return (
-    <div>
-      <header className="mb-8 pb-8 border-b border-clozr-border">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-clozr-muted">
-          Coordinated outcome
-        </p>
-        <h2 className="mt-3 text-2xl sm:text-[1.75rem] font-bold tracking-tight text-clozr-primary">
-          Goal Execution Result
+    <div className="relative">
+      <header className="mb-9 pb-8 border-b border-clozr-border">
+        <div className="inline-flex items-center gap-2 rounded-full border border-clozr-accent-border bg-clozr-accent-soft/70 px-3 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#ff6658]" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9a3d32]">
+            Coordinated outcome
+          </span>
+        </div>
+        <h2 className="mt-4 text-[1.85rem] sm:text-[2rem] font-bold tracking-[-0.03em] text-clozr-primary leading-[1.15]">
+          SEO campaign brief
         </h2>
-        <p className="mt-3 text-sm text-clozr-secondary">
-          Evidence assembled from multi-agent coordination across the Gleam
-          network — not a single-model response.
+        <p className="mt-2.5 text-[14px] leading-relaxed text-clozr-secondary max-w-xl">
+          Assembled from the live Gleam SEO Agent after network routing for{" "}
+          <span className="font-semibold text-clozr-primary">seo_keywords</span>.
         </p>
       </header>
 
       <NetworkRoutingSummary result={result} />
 
-      <div className="space-y-0">
-        {sections.map((section, i) => (
-          <StreamingSection
-            key={section.id}
-            title={section.title}
-            content={section.content}
-            active={i <= sectionIndex}
-            onFinished={() => {
-              if (i < sections.length - 1) {
-                setSectionIndex((prev) => Math.max(prev, i + 1));
-              } else {
-                setAllComplete(true);
-              }
-            }}
-          />
-        ))}
+      {!hasContent ? (
+        <p className="text-sm text-clozr-secondary">
+          No SEO agent output was returned for this run.
+        </p>
+      ) : null}
+
+      {view.title ? (
+        <Reveal show={step >= 1} className="mb-9">
+          <SectionLabel index="01">Recommended title</SectionLabel>
+          <div className="relative overflow-hidden rounded-2xl border border-[#171412]/10 bg-[#171412] px-5 py-6 sm:px-6 sm:py-7 shadow-[0_12px_32px_rgba(23,20,18,0.12)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[#ff6658]/25 blur-2xl" />
+            <p className="relative text-xl sm:text-[1.6rem] font-semibold tracking-[-0.02em] text-white leading-snug">
+              {view.title}
+            </p>
+          </div>
+        </Reveal>
+      ) : null}
+
+      {view.metaDescription ? (
+        <Reveal show={step >= 2} className="mb-9">
+          <SectionLabel index="02">Meta description</SectionLabel>
+          <div className="rounded-2xl border border-clozr-border bg-white px-5 py-4 shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+            <p className="text-[15px] leading-[1.75] text-clozr-secondary">
+              {view.metaDescription}
+            </p>
+          </div>
+        </Reveal>
+      ) : null}
+
+      {view.strategy ? (
+        <Reveal show={step >= 3} className="mb-9">
+          <SectionLabel index="03">Strategy</SectionLabel>
+          <div className="rounded-2xl border border-clozr-border bg-[#faf8f5] px-5 py-4">
+            <p className="text-[15px] leading-[1.75] text-clozr-secondary">
+              {view.strategy}
+            </p>
+          </div>
+        </Reveal>
+      ) : null}
+
+      <div>
+        <KeywordGroup
+          index="04"
+          title="Primary keywords"
+          items={view.primary}
+          show={step >= 4}
+        />
+        <KeywordGroup
+          index="05"
+          title="Secondary keywords"
+          items={view.secondary}
+          show={step >= 5}
+        />
+        <KeywordGroup
+          index="06"
+          title="Long-tail keywords"
+          items={view.longTail}
+          show={step >= 6}
+        />
+        <KeywordGroup
+          index="07"
+          title="Competitor gaps"
+          items={view.gaps}
+          show={step >= 7}
+        />
+        <KeywordGroup
+          index="08"
+          title="PPC targets"
+          items={view.ppc}
+          show={step >= 8}
+        />
       </div>
 
-      <StructuredArtifacts result={result} visible={allComplete} />
+      {view.amazonTerms.length > 0 ? (
+        <Reveal show={step >= 9} className="pt-9">
+          <SectionLabel index="09">Amazon backend terms</SectionLabel>
+          <div className="flex flex-wrap gap-2">
+            {view.amazonTerms.map((term) => (
+              <span
+                key={term}
+                className="rounded-full border border-clozr-border bg-white px-3 py-1.5 text-[12px] font-medium text-clozr-primary shadow-[0_1px_0_rgba(17,17,17,0.03)]"
+              >
+                {term}
+              </span>
+            ))}
+          </div>
+        </Reveal>
+      ) : null}
 
-      {allComplete ? (
-        <p className="text-xs text-clozr-muted pt-8 border-t border-clozr-border animate-in fade-in duration-500">
-          Coordination complete — goal decomposed, routed, and assembled through
-          the network.
+      {result.seo_agent_output && step >= 9 ? (
+        <details className="mt-10 group">
+          <summary className="text-xs font-medium text-clozr-muted cursor-pointer hover:text-clozr-primary list-none inline-flex items-center gap-2 rounded-full border border-clozr-border bg-white px-3 py-1.5">
+            <span className="text-[#ff6658] group-open:rotate-90 transition-transform">
+              ›
+            </span>
+            Raw agent JSON
+          </summary>
+          <pre className="mt-3 text-[10px] font-mono overflow-x-auto rounded-2xl border border-clozr-border bg-[#171412] p-4 text-[#d8d2ca] max-h-72">
+            {JSON.stringify(result.seo_agent_output, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+
+      {step >= 9 ? (
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-clozr-muted pt-8 mt-8 border-t border-clozr-border animate-in fade-in duration-500">
+          Coordination complete · Gleam SEO Agent
         </p>
       ) : null}
     </div>

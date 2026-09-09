@@ -43,6 +43,8 @@ class EcommerceLaunchResponse(BaseModel):
     ad_copy: list[dict[str, Any]] = Field(default_factory=list)
     email_subjects: list[str] = Field(default_factory=list)
     launch_angle: Optional[str] = None
+    # Full output_payload from the seo_keywords worker (e.g. Gleam SEO Agent).
+    seo_agent_output: Optional[dict[str, Any]] = None
     workflow_status: str
     workflow_id: str
     workflow_trace: dict[str, Any] = Field(default_factory=dict)

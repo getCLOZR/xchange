@@ -221,22 +221,34 @@ export function parseGoalToWorkflowInput(
   goal: string,
   requesterAgentId: number
 ): EcommerceLaunchRequest {
-  const trimmed = goal.trim();
-  const forMatch = trimmed.match(/\bfor\s+(.+?)\.?$/i);
-  const target_market = forMatch?.[1]?.trim() || "target customers";
+  const trimmed = goal.trim().replace(/\s+/g, " ");
 
-  let product_name = "Premium Product";
-  const launchMatch = trimmed.match(
-    /(?:launch|introduce|sell|create|build)\s+(?:a\s+)?(?:premium\s+)?(.+?)(?:\s+for\s+|\s+to\s+|\.|$)/i
-  );
-  if (launchMatch?.[1]) {
-    product_name = launchMatch[1].trim();
-  } else if (trimmed.length > 0 && trimmed.length < 120) {
-    product_name = trimmed.replace(/\.$/, "");
-  }
+  // "… for <audience>" → target market; remainder → product/topic
+  const forMatch = trimmed.match(/^(.*?)\s+for\s+(.+?)\.?$/i);
+  let productPart = forMatch?.[1]?.trim() || trimmed;
+  let target_market = forMatch?.[2]?.trim() || "target customers";
+
+  // Strip common goal lead-ins: "Launch a …", "Create …", "Help me sell …"
+  productPart = productPart
+    .replace(
+      /^(?:please\s+)?(?:help\s+me\s+)?(?:i\s+want\s+to\s+)?(?:launch|introduce|sell|create|build|make|market|promote)\s+(?:a\s+|an\s+|the\s+)?/i,
+      ""
+    )
+    .replace(/^(?:a|an|the)\s+/i, "")
+    .replace(/\.$/, "")
+    .trim();
+
+  // Whole goal as product if stripping left nothing useful
+  let product_name =
+    productPart.length >= 2 ? productPart : trimmed.replace(/\.$/, "");
 
   if (product_name.length > 0) {
     product_name = product_name.charAt(0).toUpperCase() + product_name.slice(1);
+  }
+
+  if (target_market.length > 0) {
+    target_market =
+      target_market.charAt(0).toUpperCase() + target_market.slice(1);
   }
 
   return {

@@ -60,34 +60,33 @@ def execute(payload: ExecuteRequest):
 def _research(product_name: str, target_market: str) -> dict[str, Any]:
     return {
         "market_summary": (
-            f"{target_market} evaluating {product_name} prioritize durability, leak-proof "
-            "design, easy cleaning, and portability for gym bags and office commutes. "
-            "Buyers compare shaker cups on mixability, BPA-free materials, and value for "
-            "daily protein routines."
+            f"{target_market} evaluating {product_name} prioritize quality, reliability, "
+            f"clear differentiation, and day-to-day fit. Buyers compare options on features, "
+            f"materials, ease of use, and value when choosing {product_name}."
         ),
         "competitors": [
             {
-                "name": "HydraMix Pro",
-                "positioning": "Premium leak-proof shaker for serious lifters",
-                "price_range": "$24–$32",
+                "name": f"Premium {product_name} Co",
+                "positioning": f"Higher-end {product_name} for quality-focused buyers",
+                "price_range": "Premium",
             },
             {
-                "name": "FitBlend Classic",
-                "positioning": "Affordable everyday gym shaker",
-                "price_range": "$12–$18",
+                "name": f"Everyday {product_name}",
+                "positioning": f"Accessible {product_name} for mainstream shoppers",
+                "price_range": "Mid-range",
             },
             {
-                "name": "CleanShake Elite",
-                "positioning": "Easy-clean design for busy professionals",
-                "price_range": "$19–$26",
+                "name": f"Value {product_name} Line",
+                "positioning": f"Budget-friendly alternative in the {product_name} category",
+                "price_range": "Value",
             },
         ],
         "customer_angles": [
-            "Leak-proof lid for gym bags and commutes",
-            "Smooth mixing without clumps",
-            "Dishwasher-safe, odor-resistant materials",
-            "Compact size that fits cup holders",
-            "Trustworthy brand for daily health routines",
+            f"Clear benefits that matter to {target_market}",
+            f"Differentiation vs typical {product_name} options",
+            "Trust and quality signals that support purchase",
+            "Ease of use in everyday routines",
+            "Strong value relative to alternatives",
         ],
         "product_name": product_name,
         "target_market": target_market,

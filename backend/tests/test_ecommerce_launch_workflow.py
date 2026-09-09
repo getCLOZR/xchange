@@ -106,6 +106,7 @@ def test_ecommerce_workflow_success(client, monkeypatch):
     assert body["workflow_status"] == "completed"
     assert body["product_title"] == "Protein Shaker — Leak-Proof"
     assert len(body["seo_keywords"]) == 2
+    assert body["seo_agent_output"]["primary_keywords"] == ["protein shaker bottle"]
     assert len(body["workflow_trace"]["steps"]) == 4
     assert call_count["n"] == 4
 
